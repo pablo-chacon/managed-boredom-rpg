@@ -1,0 +1,24 @@
+[
+  {
+    "id": "colleague_1",
+    "namePool": ["Anna", "Johan", "Sara", "Emil", "Mikael", "Lina"],
+    "rolePool": ["Colleague", "Neighbor", "Case Handler", "Receptionist"],
+    "scripts": {
+      "concern_low_energy": [
+        "I am sorry you feel that way.",
+        "Have you considered talking to a doctor?",
+        "It is important to take responsibility for your wellbeing."
+      ],
+      "concern_high_energy": [
+        "You seem intense lately.",
+        "Do not burn out.",
+        "Stability is important."
+      ],
+      "neutral": [
+        "Everything is fine.",
+        "The process is working as intended.",
+        "Have you tried following the standard procedure?"
+      ]
+    }
+  }
+]

@@ -1,0 +1,7 @@
+[
+  { "id": "mandatory_training", "label": "Mandatory Training", "energyDelta": -8, "cost": 0, "weight": 10 },
+  { "id": "rent_indexation", "label": "Rent Indexation", "energyDelta": -2, "cost": 20, "weight": 12 },
+  { "id": "admin_delay", "label": "Administrative Delay", "energyDelta": -3, "cost": 0, "weight": 14 },
+  { "id": "unexpected_fee", "label": "Unexpected Fee", "energyDelta": -1, "cost": 15, "weight": 14 },
+  { "id": "wellbeing_seminar", "label": "Wellbeing Seminar", "energyDelta": -4, "cost": 0, "weight": 10 }
+]
