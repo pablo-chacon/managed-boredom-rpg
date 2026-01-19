@@ -79,7 +79,7 @@ export function resolveIllegalWorkMonth(
       rng.nextFloat() * (cfg.postBustEnergyMax - cfg.postBustEnergyMin)
     );
 
-  // Doctor appointment is scheduled, but no forced purchase
+  // Doctor appointment is scheduled.
   // Player likely has no funds to buy medication
   const next: GameState = {
     ...state,
