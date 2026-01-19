@@ -171,8 +171,7 @@ export class EvmGate implements OwnershipGate {
     const player = assertHexAddress(p.player, "player");
     const tokenId = p.tokenId;
 
-    // Optional: chainId can be used to sanity check endpoints in the future.
-    // For now, we keep it purely read-only and minimal.
+
 
     const balance = await this.balanceOfWithFallback(contract, player, tokenId);
     return balance > 0n;
@@ -180,7 +179,6 @@ export class EvmGate implements OwnershipGate {
 
   async seedFor(p: GateParams): Promise<number> {
     // Seed should not require RPC. It should be derived from deterministic identifiers.
-    // This keeps runs reproducible even if RPC endpoints change.
     const contract = assertHexAddress(p.contract, "contract");
     const player = assertHexAddress(p.player, "player");
     const tokenIdNorm = assertTokenId(p.tokenId);

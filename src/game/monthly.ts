@@ -31,19 +31,11 @@ export function resolveMonthlyStep(
 
   log.push(`--- Month ${state.month + 1} ---`);
 
-  // Employment
   if (state.jobId && choice === "work") {
-    next = simulateMonth(
-      rng,
-      next,
-      economy,
-      jobs,
-      []
-    );
+    next = simulateMonth(rng, next, economy, jobs, []);
     log.push("Employment month processed.");
   }
 
-  // Unemployment
   if (!state.jobId && choice === "unemployment") {
     const res = resolveUnemploymentMonth(rng, next, unemploymentCfg);
     next = res.state;
@@ -57,7 +49,6 @@ export function resolveMonthlyStep(
     log.push("Unemployment month processed.");
   }
 
-  // Illegal work
   if (choice === "illegal_work") {
     const res = resolveIllegalWorkMonth(
       rng,
@@ -69,20 +60,17 @@ export function resolveMonthlyStep(
     log.push("Irregular income activity processed.");
   }
 
-  // Doctor
   if (choice === "visit_doctor") {
     const res = resolveDoctorAppointment(next, doctorCfg);
     next = res.state;
     log.push("Healthcare follow-up processed.");
   }
 
-  // Rest
   if (choice === "rest") {
     next.energy = clamp(next.energy + 5, 0, 100);
     log.push("Rest taken.");
   }
 
-  // Exit check
   const exitCost =
     economy.exit.passport.cost +
     economy.exit.travel.ticketCost +

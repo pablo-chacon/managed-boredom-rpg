@@ -1,31 +1,31 @@
-// xorshift32: tiny, deterministic, good enough for a demo.
 export class RNG {
-  private x: number;
+  private state: number;
+
   constructor(seed: number) {
-    this.x = seed >>> 0;
-    if (this.x === 0) this.x = 0x9e3779b9;
+    this.state = seed >>> 0;
   }
-  nextU32(): number {
-    let x = this.x;
-    x ^= x << 13; x >>>= 0;
-    x ^= x >>> 17; x >>>= 0;
-    x ^= x << 5;  x >>>= 0;
-    this.x = x;
-    return x;
+
+  next(): number {
+    this.state ^= this.state << 13;
+    this.state ^= this.state >>> 17;
+    this.state ^= this.state << 5;
+    return (this.state >>> 0) / 0xffffffff;
   }
-  nextFloat(): number {
-    return this.nextU32() / 0xffffffff;
+
+  pick<T>(items: readonly T[]): T {
+    const idx = Math.floor(this.next() * items.length);
+    return items[Math.min(idx, items.length - 1)];
   }
-  pick<T>(arr: T[]): T {
-    return arr[Math.floor(this.nextFloat() * arr.length)];
-  }
-  weightedPick<T extends { weight: number }>(arr: T[]): T {
-    const total = arr.reduce((s, a) => s + a.weight, 0);
-    let r = this.nextFloat() * total;
-    for (const a of arr) {
-      r -= a.weight;
-      if (r <= 0) return a;
+
+  weightedPick<T extends { weight: number }>(items: readonly T[]): T {
+    const total = items.reduce((s, i) => s + i.weight, 0);
+    let r = this.next() * total;
+
+    for (const item of items) {
+      if (r < item.weight) return item;
+      r -= item.weight;
     }
-    return arr[arr.length - 1];
+
+    return items[items.length - 1];
   }
 }

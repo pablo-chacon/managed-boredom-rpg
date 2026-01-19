@@ -3,21 +3,27 @@ import { GameState, Economy } from "./state";
 import { Job } from "../config/jobs";
 import { clamp, energyBand, regulatorDrift } from "./rules";
 
-export type Event = { id: string; label: string; energyDelta: number; cost: number; weight: number };
+export type Event = {
+  id: string;
+  label: string;
+  energyDelta: number;
+  cost: number;
+  weight: number;
+};
 
 export function simulateMonth(
   rng: RNG,
   s: GameState,
   econ: Economy,
   jobs: readonly Job[],
-  events: Event[],
+  events: readonly Event[],
 ): GameState {
   if (s.exited) return s;
 
   const job = jobs.find(j => j.id === s.jobId) ?? jobs[0];
   const log: string[] = [];
 
-  // Work: income + energy cost
+  // Income
   const gross = job.grossMonthly;
   const tax = Math.round(gross * econ.income.taxRate);
   const netIncome = gross - tax;
@@ -25,15 +31,17 @@ export function simulateMonth(
   let cash = s.cash + netIncome;
   let energy = s.energy - job.energyCost;
 
-  log.push(`Month ${s.month}: Worked as ${job.label}. Gross $${gross}, tax $${tax}, net +$${netIncome}.`);
+  log.push(
+    `Month ${s.month}: Worked as ${job.label}. Gross $${gross}, tax $${tax}, net +$${netIncome}.`
+  );
 
-  // Living costs + VAT on consumption
+  // Living
   const living = econ.living.monthlyCost;
   const vat = Math.round(living * econ.vat.rate);
-  cash -= (living + vat);
+  cash -= living + vat;
   log.push(`Paid living $${living} + VAT $${vat}.`);
 
-  // Passport processing tick
+  // Passport
   let passportMonthsLeft = s.passportMonthsLeft;
   let hasPassport = s.hasPassport;
   if (passportMonthsLeft > 0) {
@@ -41,11 +49,11 @@ export function simulateMonth(
     log.push(`Passport processing. Months left: ${passportMonthsLeft}.`);
     if (passportMonthsLeft === 0) {
       hasPassport = true;
-      log.push(`Passport approved.`);
+      log.push("Passport approved.");
     }
   }
 
-  // Antidepressant tick
+  // Antidepressants
   let adMonthsLeft = s.antidepressantMonthsLeft;
   if (adMonthsLeft > 0) {
     adMonthsLeft -= 1;
@@ -53,32 +61,27 @@ export function simulateMonth(
   }
 
   // Managed boredom events
-  const band = energyBand(energy);
+  if (events.length > 0) {
+    const band = energyBand(energy);
+    const ev = rng.weightedPick(events);
 
-  // base one event per month
-  let ev = rng.weightedPick(events);
-
-  // energy-dependent extra “help” or “responsibility”
-  if (band === "HIGH") {
-    // More obligations, small fees. Deterministic and polite.
-    const extra = rng.weightedPick(events);
-    energy += ev.energyDelta + extra.energyDelta;
-    cash -= (ev.cost + extra.cost);
-    log.push(`Obligation: ${ev.label} (-E ${-ev.energyDelta}, -$${ev.cost}).`);
-    log.push(`Obligation: ${extra.label} (-E ${-extra.energyDelta}, -$${extra.cost}).`);
-  } else {
-    energy += ev.energyDelta;
-    cash -= ev.cost;
-    log.push(`Obligation: ${ev.label} (-E ${-ev.energyDelta}, -$${ev.cost}).`);
+    if (band === "HIGH" && events.length > 1) {
+      const extra = rng.weightedPick(events);
+      energy += ev.energyDelta + extra.energyDelta;
+      cash -= ev.cost + extra.cost;
+      log.push(`Obligation: ${ev.label}.`);
+      log.push(`Obligation: ${extra.label}.`);
+    } else {
+      energy += ev.energyDelta;
+      cash -= ev.cost;
+      log.push(`Obligation: ${ev.label}.`);
+    }
   }
 
-  // Regulator drift toward medium energy
+  // Regulator drift
   energy += regulatorDrift(energy);
-
-  // Clamp
   energy = clamp(Math.round(energy), 0, 100);
 
-  // End state
   const next: GameState = {
     ...s,
     month: s.month + 1,
@@ -89,5 +92,6 @@ export function simulateMonth(
     antidepressantMonthsLeft: adMonthsLeft,
     log: [...s.log, ...log],
   };
+
   return next;
 }
