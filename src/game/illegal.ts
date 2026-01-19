@@ -28,10 +28,10 @@ export function resolveIllegalWorkMonth(
 ): { state: GameState; result: IllegalResolutionResult } {
   const notes: string[] = [];
 
-  // 1) Monthly illegal income
+  // Monthly illegal income
   const illegalIncome = Math.round(livingMonthlyCost * cfg.incomeCoveragePct);
 
-  // 2) Bust check
+  // Bust check
   const roll = rng.nextFloat();
   const busted = roll < cfg.bustChance;
 
@@ -64,7 +64,7 @@ export function resolveIllegalWorkMonth(
     };
   }
 
-  // 3) Bust resolution framed as care
+  // Bust resolution framed as care
   notes.push(`Irregular activity detected.`);
   notes.push(`Support review initiated.`);
   notes.push(`A healthcare follow-up has been scheduled.`);

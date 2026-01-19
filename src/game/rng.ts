@@ -12,6 +12,11 @@ export class RNG {
     return (this.state >>> 0) / 0xffffffff;
   }
 
+  // Alias for semantic clarity
+  nextFloat(): number {
+    return this.next();
+  }
+
   pick<T>(items: readonly T[]): T {
     const idx = Math.floor(this.next() * items.length);
     return items[Math.min(idx, items.length - 1)];
