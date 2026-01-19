@@ -71,6 +71,7 @@ async function main() {
 
   // Plot twist
   console.log("Due to reconstruction, your position has been terminated.");
+  console.log("Record high bonuses for board members...");
   console.log("");
 
   // Final salary

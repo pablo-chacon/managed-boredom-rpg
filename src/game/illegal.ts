@@ -90,6 +90,7 @@ export function resolveIllegalWorkMonth(
     log: [
       ...state.log,
       ...notes,
+      `We're here to help.`,
       `All funds reset.`,
       `Energy reduced to ${postBustEnergy}.`,
       `Prescription issued. Follow-up recommended.`,
