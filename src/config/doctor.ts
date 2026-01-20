@@ -1,6 +1,6 @@
 export const DOCTOR_CFG = {
-  antidepressantCost: 30,
+  antidepressantCost: 20,
   durationMonths: 1,
-  energyFloorBoost: 25,
+  energyFloorBoost: 35,
   energyCeilingCap: 65,
 };

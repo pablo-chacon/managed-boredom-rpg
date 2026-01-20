@@ -26,16 +26,18 @@ export function resolveMonthlyStep(
   doctorCfg: DoctorConfig,
   unemploymentCfg: UnemploymentConfig
 ): GameState {
-  let next = { ...state };
+  let next: GameState = { ...state };
   const log: string[] = [];
 
   log.push(`--- Month ${state.month + 1} ---`);
 
+  // Employment
   if (state.jobId && choice === "work") {
     next = simulateMonth(rng, next, economy, jobs, []);
     log.push("Employment month processed.");
   }
 
+  // Unemployment
   if (!state.jobId && choice === "unemployment") {
     const res = resolveUnemploymentMonth(rng, next, unemploymentCfg);
     next = res.state;
@@ -49,6 +51,7 @@ export function resolveMonthlyStep(
     log.push("Unemployment month processed.");
   }
 
+  // Illegal work
   if (choice === "illegal_work") {
     const res = resolveIllegalWorkMonth(
       rng,
@@ -60,17 +63,28 @@ export function resolveMonthlyStep(
     log.push("Irregular income activity processed.");
   }
 
+  // Doctor
   if (choice === "visit_doctor") {
     const res = resolveDoctorAppointment(next, doctorCfg);
     next = res.state;
     log.push("Healthcare follow-up processed.");
   }
 
+  // Rest
   if (choice === "rest") {
     next.energy = clamp(next.energy + 5, 0, 100);
     log.push("Rest taken.");
   }
 
+  // Mandatory monthly living costs (always applied)
+  const living = economy.living.monthlyCost;
+  const vat = Math.round(living * economy.vat.rate);
+  const totalLivingCost = living + vat;
+
+  next.cash -= totalLivingCost;
+  log.push(`Living costs deducted: $${living} + VAT $${vat}.`);
+
+  // Exit check
   const exitCost =
     economy.exit.passport.cost +
     economy.exit.travel.ticketCost +
@@ -81,6 +95,7 @@ export function resolveMonthlyStep(
     log.push("Exit conditions satisfied.");
   }
 
+  // Advance time
   next.month += 1;
   next.log = [...next.log, ...log];
 
