@@ -51,7 +51,6 @@ export function resolveIllegalWorkMonth(
       cash: state.cash + cashDelta,
       energy: clamp(state.energy + energyDelta, 0, 100),
       // Illegal income cannot be used for exit
-      // Do not mark any exit-related flags here
       log: [
         ...state.log,
         ...notes,
@@ -90,7 +89,7 @@ export function resolveIllegalWorkMonth(
     log: [
       ...state.log,
       ...notes,
-      `We're here to help.`,
+      `We're here to help you.`,
       `All funds reset.`,
       `Energy reduced to ${postBustEnergy}.`,
       `Prescription issued. Follow-up recommended.`,

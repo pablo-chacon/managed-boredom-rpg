@@ -18,6 +18,22 @@ type MonthlyChoice =
   | "rest"
   | "quit";
 
+const VALID_CHOICES: readonly MonthlyChoice[] = [
+  "work",
+  "unemployment",
+  "illegal_work",
+  "visit_doctor",
+  "rest",
+  "quit",
+];
+
+function parseChoice(input: string): MonthlyChoice | null {
+  const trimmed = input.trim();
+  return (VALID_CHOICES as readonly string[]).includes(trimmed)
+    ? (trimmed as MonthlyChoice)
+    : null;
+}
+
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
@@ -98,26 +114,23 @@ async function main() {
     console.log("  rest");
     console.log("  quit");
 
-    const input = (await ask("> ")).trim() as MonthlyChoice;
+    const raw = await ask("> ");
+    const choice = parseChoice(raw);
 
-    if (input === "quit") {
-      console.log("Session ended.");
-      break;
+    if (!choice) {
+      console.log("Request cannot be processed as entered.");
+      continue;
     }
 
-    if (
-      !["work", "unemployment", "illegal_work", "visit_doctor", "rest"].includes(
-        input
-      )
-    ) {
-      console.log("Invalid choice.");
-      continue;
+    if (choice === "quit") {
+      console.log("Session ended.");
+      break;
     }
 
     state = resolveMonthlyStep(
       rng,
       state,
-      input,
+      choice,
       ECONOMY,
       JOBS,
       ILLEGAL_WORK_CFG,
@@ -125,7 +138,6 @@ async function main() {
       UNEMPLOYMENT_CFG
     );
 
-    // Print month log
     const recent = state.log.slice(-12);
     for (const line of recent) {
       console.log(line);

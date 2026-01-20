@@ -6,6 +6,7 @@
     "moduleResolution": "node",
     "rootDir": "src",
     "outDir": "dist",
+    "types": ["node", "jest"],
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "strict": true,
