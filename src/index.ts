@@ -7,7 +7,7 @@ import { JOBS } from "./config/jobs";
 import { ILLEGAL_WORK_CFG } from "./config/illegal";
 import { DOCTOR_CFG } from "./config/doctor";
 import { UNEMPLOYMENT_CFG } from "./config/unemployment";
-
+import { respondWithAI } from "./game/aiWrapper";
 import { MockGate } from "./adapters/mock";
 
 type MonthlyChoice =
@@ -47,7 +47,6 @@ async function main() {
   console.log("Managed Boredom");
   console.log("");
 
-  // Ownership gate
   const gate = new MockGate();
 
   const params = {
@@ -66,7 +65,6 @@ async function main() {
   const seed = await gate.seedFor(params);
   const rng = new RNG(seed);
 
-  // Initial state
   let state: GameState = {
     month: 0,
     energy: 55,
@@ -82,15 +80,14 @@ async function main() {
     attendingAgency: true,
     pendingCvCourse: false,
     exited: false,
+    distressLog: [],
     log: [],
   };
 
-  // Plot twist
   console.log("Due to reconstruction, your position has been terminated.");
   console.log("Record high bonuses for board members...");
   console.log("");
 
-  // Final salary
   const finalGross = JOBS.find(j => j.id === state.jobId)!.grossMonthly;
   const tax = Math.round(finalGross * ECONOMY.income.taxRate);
   state.cash += finalGross - tax;
@@ -117,10 +114,13 @@ async function main() {
     const raw = await ask("> ");
     const choice = parseChoice(raw);
 
-    if (!choice) {
-      console.log("Request cannot be processed as entered.");
+   if (!choice) {
+      const reply = await respondWithAI(raw, "system", state);
+      console.log(reply.text);
+      state = reply.state;
       continue;
-    }
+  }
+
 
     if (choice === "quit") {
       console.log("Session ended.");

@@ -1,3 +1,5 @@
+import { DistressEvent } from "./distress"
+
 
 export type Economy = {
   time: { daysPerMonth: number };
@@ -28,4 +30,5 @@ export type GameState = {
   jobChance: number;
   attendingAgency: boolean;
   pendingCvCourse: boolean;
+  distressLog: DistressEvent[];
 };

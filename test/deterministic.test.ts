@@ -1,7 +1,6 @@
 import { RNG } from "../src/game/rng";
 import { resolveMonthlyStep, MonthlyChoice } from "../src/game/monthly";
 import { GameState } from "../src/game/state";
-
 import { ECONOMY } from "../src/config/economy";
 import { JOBS } from "../src/config/jobs";
 import { ILLEGAL_WORK_CFG } from "../src/config/illegal";
@@ -10,7 +9,7 @@ import { UNEMPLOYMENT_CFG } from "../src/config/unemployment";
 
 /**
  * Helper to run a deterministic sequence of choices
- * without touching CLI or IO.
+ * without touching CLI, IO, or AI.
  */
 function runSimulation(
   seed: number,
@@ -34,6 +33,7 @@ function runSimulation(
     attendingAgency: true,
     pendingCvCourse: false,
     exited: false,
+    distressLog: [],
     log: [],
     ...initial,
   };
@@ -126,5 +126,26 @@ describe("Managed Boredom deterministic core", () => {
     const end = runSimulation(seed, choices);
 
     expect(Number.isFinite(end.cash)).toBe(true);
+  });
+
+  it("distress log entries are structurally valid if present", () => {
+    const seed = 777;
+    const choices: MonthlyChoice[] = [
+      "illegal_work",
+      "illegal_work",
+      "illegal_work",
+    ];
+
+    const end = runSimulation(seed, choices);
+
+    for (const entry of end.distressLog) {
+      expect(entry).toEqual(
+        expect.objectContaining({
+          month: expect.any(Number),
+          input: expect.any(String),
+          source: expect.any(String),
+        })
+      );
+    }
   });
 });

@@ -3,7 +3,7 @@ export const ECONOMY =
   time: { daysPerMonth: 30 },
   income: { taxRate: 0.30 },
   vat: { rate: 0.25 },
-  living: { monthlyCost: 600 },
+  living: { monthlyCost: 180 },
   exit: {
     passport: { cost: 50, processingMonths: 2 },
     travel: { ticketCost: 100, flightTax: 400 }
