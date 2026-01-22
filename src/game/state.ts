@@ -2,6 +2,7 @@ import { DistressEvent } from "./distress"
 
 
 export type Economy = {
+
   time: { daysPerMonth: number };
   income: { taxRate: number };
   vat: { rate: number };
@@ -15,9 +16,14 @@ export type Economy = {
 
 
 export type GameState = {
+
   month: number;
+  week: number;
   energy: number;              // 0..100
   cash: number;
+  onWelfare: boolean;
+  welfareWeeksThisMonth: number;
+  welfareCooldownMonths: number; // job chance penalty after exit
   jobId: string;
   hasPassport: boolean;
   passportMonthsLeft: number;  // if > 0, processing
@@ -31,4 +37,10 @@ export type GameState = {
   attendingAgency: boolean;
   pendingCvCourse: boolean;
   distressLog: DistressEvent[];
+  workWeeksThisMonth: number;
+  highEnergyWorkWeeksThisMonth: number;
+  weeksSinceLastPromotionReview: number;
+  onPerformanceGracePeriod: boolean
+  performanceGraceWeeksLeft: number
+
 };

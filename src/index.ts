@@ -1,6 +1,6 @@
 import readline from "readline";
 import { RNG } from "./game/rng";
-import { resolveMonthlyStep } from "./game/monthly";
+import { resolveWeeklyStep } from "./game/weekly";
 import { GameState } from "./game/state";
 import { ECONOMY } from "./config/economy";
 import { JOBS } from "./config/jobs";
@@ -10,7 +10,7 @@ import { UNEMPLOYMENT_CFG } from "./config/unemployment";
 import { respondWithAI } from "./game/aiWrapper";
 import { MockGate } from "./adapters/mock";
 
-type MonthlyChoice =
+type WeeklyChoice =
   | "work"
   | "unemployment"
   | "illegal_work"
@@ -18,7 +18,7 @@ type MonthlyChoice =
   | "rest"
   | "quit";
 
-const VALID_CHOICES: readonly MonthlyChoice[] = [
+const VALID_CHOICES: readonly WeeklyChoice[] = [
   "work",
   "unemployment",
   "illegal_work",
@@ -27,10 +27,10 @@ const VALID_CHOICES: readonly MonthlyChoice[] = [
   "quit",
 ];
 
-function parseChoice(input: string): MonthlyChoice | null {
+function parseChoice(input: string): WeeklyChoice | null {
   const trimmed = input.trim();
   return (VALID_CHOICES as readonly string[]).includes(trimmed)
-    ? (trimmed as MonthlyChoice)
+    ? (trimmed as WeeklyChoice)
     : null;
 }
 
@@ -48,7 +48,6 @@ async function main() {
   console.log("");
 
   const gate = new MockGate();
-
   const params = {
     chainId: 1,
     contract: "0xdeadbeef",
@@ -56,19 +55,21 @@ async function main() {
     player: "0xplayer",
   };
 
-  const hasAccess = await gate.hasAccess(params);
-  if (!hasAccess) {
+  if (!(await gate.hasAccess(params))) {
     console.log("Access denied.");
     process.exit(1);
   }
 
-  const seed = await gate.seedFor(params);
-  const rng = new RNG(seed);
+  const rng = new RNG(await gate.seedFor(params));
 
   let state: GameState = {
     month: 0,
+    week: 1,
     energy: 55,
     cash: 0,
+    onWelfare: false,
+    welfareWeeksThisMonth: 0,
+    welfareCooldownMonths: 0,
     jobId: "clerk",
     hasPassport: false,
     passportMonthsLeft: 0,
@@ -80,6 +81,11 @@ async function main() {
     attendingAgency: true,
     pendingCvCourse: false,
     exited: false,
+    workWeeksThisMonth: 0,
+    highEnergyWorkWeeksThisMonth: 0,
+    weeksSinceLastPromotionReview: 0,
+    onPerformanceGracePeriod: false,
+    performanceGraceWeeksLeft: 0,
     distressLog: [],
     log: [],
   };
@@ -92,12 +98,13 @@ async function main() {
   const tax = Math.round(finalGross * ECONOMY.income.taxRate);
   state.cash += finalGross - tax;
   state.jobId = "";
+
   console.log(`Final salary paid: $${finalGross - tax} after tax.`);
   console.log("");
 
   while (!state.exited) {
     console.log("");
-    console.log(`Month: ${state.month + 1}`);
+    console.log(`Month ${state.month + 1}, Week ${state.week}`);
     console.log(`Cash: $${state.cash}`);
     console.log(`Energy: ${state.energy}`);
     console.log(`Status: ${state.jobId ? "Employed" : "Unemployed"}`);
@@ -114,20 +121,19 @@ async function main() {
     const raw = await ask("> ");
     const choice = parseChoice(raw);
 
-   if (!choice) {
+    if (!choice) {
       const reply = await respondWithAI(raw, "system", state);
       console.log(reply.text);
       state = reply.state;
       continue;
-  }
-
+    }
 
     if (choice === "quit") {
       console.log("Session ended.");
       break;
     }
 
-    state = resolveMonthlyStep(
+    state = resolveWeeklyStep(
       rng,
       state,
       choice,
@@ -138,8 +144,7 @@ async function main() {
       UNEMPLOYMENT_CFG
     );
 
-    const recent = state.log.slice(-12);
-    for (const line of recent) {
+    for (const line of state.log.slice(-12)) {
       console.log(line);
     }
 

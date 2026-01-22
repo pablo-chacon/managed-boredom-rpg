@@ -1,88 +1,111 @@
 import { RNG } from "./rng";
-import { clamp } from "./rules";
 import { GameState, Economy } from "./state";
-
-import { simulateMonth } from "./simulate";
-import { resolveIllegalWorkMonth, IllegalWorkConfig } from "./illegal";
-import { resolveDoctorAppointment, DoctorConfig } from "./doctor";
-import { resolveUnemploymentMonth, UnemploymentConfig } from "./unemployment";
-
 import { Job } from "../config/jobs";
 
-export type MonthlyChoice =
-  | "work"
-  | "unemployment"
-  | "illegal_work"
-  | "visit_doctor"
-  | "rest";
-
-export function resolveMonthlyStep(
-  rng: RNG,
+export function applyMonthlySettlement(
   state: GameState,
-  choice: MonthlyChoice,
   economy: Economy,
   jobs: readonly Job[],
-  illegalCfg: IllegalWorkConfig,
-  doctorCfg: DoctorConfig,
-  unemploymentCfg: UnemploymentConfig
+  rng: RNG
 ): GameState {
-  let next: GameState = { ...state };
   const log: string[] = [];
+  let cash = state.cash;
 
-  log.push(`--- Month ${state.month + 1} ---`);
+  log.push(`--- Month ${state.month + 1} settlement ---`);
 
-  // Employment
-  if (state.jobId && choice === "work") {
-    next = simulateMonth(rng, next, economy, jobs, []);
-    log.push("Employment month processed.");
-  }
+  // PERFORMANCE GRACE RESOLUTION 
+  let {
+    onPerformanceGracePeriod,
+    performanceGraceWeeksLeft,
+    highEnergyWorkWeeksThisMonth,
+    jobId,
+  } = state;
 
-  // Unemployment
-  if (!state.jobId && choice === "unemployment") {
-    const res = resolveUnemploymentMonth(rng, next, unemploymentCfg);
-    next = res.state;
+  if (onPerformanceGracePeriod) {
+    performanceGraceWeeksLeft -= 4; // one full month elapsed
 
-    if (res.result.gotJob) {
-      const job = rng.pick(jobs);
-      next.jobId = job.id;
-      log.push(`Job assigned: ${job.label}.`);
+    if (performanceGraceWeeksLeft <= 0) {
+      const metRecoveryThreshold = highEnergyWorkWeeksThisMonth >= 3;
+
+      if (metRecoveryThreshold) {
+        log.push(
+          "Performance review completed.",
+          "Improvement acknowledged.",
+          "Expectations reinstated."
+        );
+
+        onPerformanceGracePeriod = false;
+        performanceGraceWeeksLeft = 0;
+      } else {
+        log.push(
+          "Performance review concluded.",
+          "Required standards were not met.",
+          "Your position has been terminated."
+        );
+
+        jobId = "";
+        onPerformanceGracePeriod = false;
+        performanceGraceWeeksLeft = 0;
+
+        // Forced unemployment path
+        state.attendingAgency = true;
+        state.unemployedMonths = 0;
+        state.jobChance = 0;
+      }
     }
-
-    log.push("Unemployment month processed.");
   }
 
-  // Illegal work
-  if (choice === "illegal_work") {
-    const res = resolveIllegalWorkMonth(
-      rng,
-      next,
-      economy.living.monthlyCost,
-      illegalCfg
-    );
-    next = res.state;
-    log.push("Irregular income activity processed.");
+  // Salary payout (legal employment only)
+  if (state.jobId) {
+    const job = jobs.find(j => j.id === state.jobId)!;
+
+    if (
+      job.promotion &&
+      state.weeksSinceLastPromotionReview >= job.promotion.reviewCooldownWeeks &&
+      state.workWeeksThisMonth >= 3
+    ) {
+      if (state.highEnergyWorkWeeksThisMonth >= job.promotion.minHighEnergyWeeks) {
+        // Promotion review
+        state.weeksSinceLastPromotionReview = 0;
+
+        // Soft failure bias
+        const successChance = 0.25;
+        if (rng.next() < successChance) {
+          const nextJob = jobs.find(j => j.id === job.promotion!.nextJobId)!;
+          log.push("Management is impressed with your consistency.");
+          log.push(`You have been promoted to ${nextJob.label}.`);
+          return {
+            ...state,
+            jobId: nextJob.id,
+            log: [...state.log, ...log],
+          };
+        } else {
+          log.push("Management appreciates your effort.");
+          log.push("This opportunity was assigned elsewhere.");
+        }
+      } else {
+        log.push("Performance expectations were not fully met.");
+      }
+    }
   }
 
-  // Doctor
-  if (choice === "visit_doctor") {
-    const res = resolveDoctorAppointment(next, doctorCfg);
-    next = res.state;
-    log.push("Healthcare follow-up processed.");
-  }
-
-  // Rest
-  if (choice === "rest") {
-    next.energy = clamp(next.energy + 5, 0, 100);
-    log.push("Rest taken.");
-  }
-
-  // Mandatory monthly living costs (always applied)
+  // Living costs + VAT (always)
   const living = economy.living.monthlyCost;
   const vat = Math.round(living * economy.vat.rate);
-  const totalLivingCost = living + vat;
-
-  next.cash -= totalLivingCost;
+  cash -= living + vat;
   log.push(`Living costs deducted: $${living} + VAT $${vat}.`);
+
+  // Passport processing
+  let passportMonthsLeft = state.passportMonthsLeft;
+  let hasPassport = state.hasPassport;
+
+  if (passportMonthsLeft > 0) {
+    passportMonthsLeft -= 1;
+    if (passportMonthsLeft === 0) {
+      hasPassport = true;
+      log.push("Passport approved.");
+    }
+  }
 
   // Exit check
   const exitCost =
@@ -90,14 +113,20 @@ export function resolveMonthlyStep(
     economy.exit.travel.ticketCost +
     economy.exit.travel.flightTax;
 
-  if (next.hasPassport && next.cash >= exitCost) {
-    next.exited = true;
+  const exited = hasPassport && cash >= exitCost;
+  if (exited) {
     log.push("Exit conditions satisfied.");
   }
 
-  // Advance time
-  next.month += 1;
-  next.log = [...next.log, ...log];
-
-  return next;
+  return {
+    ...state,
+    cash,
+    hasPassport,
+    passportMonthsLeft,
+    exited,
+    jobId,
+    onPerformanceGracePeriod,
+    performanceGraceWeeksLeft,
+    log: [...state.log, ...log],
+  };
 }

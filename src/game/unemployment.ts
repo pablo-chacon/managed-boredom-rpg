@@ -29,11 +29,28 @@ export function resolveUnemploymentMonth(
   cfg: UnemploymentConfig
 ): { state: GameState; result: UnemploymentResult } {
   const notes: string[] = [];
-  let next = { ...state };
+  let next: GameState = { ...state };
   let gotJob = false;
 
   next.unemployedMonths += 1;
 
+  // JOB CHANCE SETUP
+  if (next.unemployedMonths === 1) {
+    next.jobChance =
+      cfg.baseJobChanceMin +
+      rng.next() * (cfg.baseJobChanceMax - cfg.baseJobChanceMin);
+  }
+
+  if (next.unemployedMonths % 3 === 0) {
+    next.jobChance = clamp(
+      next.jobChance - cfg.decayPerQuarter,
+      0,
+      1
+    );
+    notes.push(UNEMPLOYMENT_TEXT.probabilityAdjusted);
+  }
+
+  // AGENCY PATH
   if (state.attendingAgency) {
     notes.push(UNEMPLOYMENT_TEXT.participation);
 
@@ -48,48 +65,25 @@ export function resolveUnemploymentMonth(
     );
 
     next.energy = clamp(
-      next.energy - cfg.applicationEnergyCost * cfg.applicationsRequired,
+      next.energy -
+        cfg.applicationEnergyCost * cfg.applicationsRequired,
       0,
       100
     );
 
-    const taxedStipend = Math.round(
+    const stipend = Math.round(
       cfg.participationStipend * (1 - cfg.stipendTaxRate)
     );
-    next.cash += taxedStipend;
-    notes.push(UNEMPLOYMENT_TEXT.stipend(taxedStipend));
-
-    if (next.unemployedMonths === 1) {
-      next.jobChance =
-        cfg.baseJobChanceMin +
-        rng.next() *
-          (cfg.baseJobChanceMax - cfg.baseJobChanceMin);
-    }
-
-    if (next.unemployedMonths % 3 === 0) {
-      next.jobChance = clamp(
-        next.jobChance - cfg.decayPerQuarter,
-        0,
-        1
-      );
-      notes.push(UNEMPLOYMENT_TEXT.probabilityAdjusted);
-    }
-
-    if (rng.next() < next.jobChance) {
-      gotJob = true;
-      notes.push(UNEMPLOYMENT_TEXT.matchFound);
-    }
+    next.cash += stipend;
+    notes.push(UNEMPLOYMENT_TEXT.stipend(stipend));
 
     next.weeksWithoutAgency = 0;
-  } else {
+  }
+
+  // INDEPENDENT PATH
+  else {
     notes.push(UNEMPLOYMENT_TEXT.independentSearch);
-
     next.weeksWithoutAgency += 4;
-
-    if (rng.next() < cfg.independentJobChance) {
-      gotJob = true;
-      notes.push(UNEMPLOYMENT_TEXT.matchFound);
-    }
 
     if (next.weeksWithoutAgency >= cfg.forcedCourseAfterWeeks) {
       next.pendingCvCourse = true;
@@ -98,6 +92,7 @@ export function resolveUnemploymentMonth(
     }
   }
 
+  // CV COURSE
   if (next.pendingCvCourse) {
     notes.push(CV_COURSE_TEXT.attended);
     notes.push(CV_COURSE_TEXT.delivered);
@@ -113,6 +108,31 @@ export function resolveUnemploymentMonth(
     next.pendingCvCourse = false;
   }
 
+  // JOB ROLL (ONCE)
+  let effectiveJobChance = next.jobChance;
+
+  if (next.onWelfare || next.welfareCooldownMonths > 0) {
+    effectiveJobChance = Math.min(effectiveJobChance, 0.15);
+  }
+
+  if (!state.attendingAgency) {
+    effectiveJobChance = Math.min(
+      effectiveJobChance,
+      cfg.independentJobChance
+    );
+  }
+
+  if (rng.next() < effectiveJobChance) {
+    gotJob = true;
+    notes.push(UNEMPLOYMENT_TEXT.matchFound);
+  }
+
+  // WELFARE EXIT EFFECT
+  if (!next.onWelfare && state.onWelfare) {
+    next.welfareCooldownMonths = 3;
+  }
+
+  // JOB OBTAINED
   if (gotJob) {
     next.attendingAgency = false;
     next.unemployedMonths = 0;
