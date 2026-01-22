@@ -7,10 +7,7 @@ import { ILLEGAL_WORK_CFG } from "../src/config/illegal";
 import { DOCTOR_CFG } from "../src/config/doctor";
 import { UNEMPLOYMENT_CFG } from "../src/config/unemployment";
 
-/**
- * Helper to run a deterministic sequence of choices
- * without touching CLI, IO, or AI.
- */
+// Run deterministic sequence of choices
 function runSimulation(
   seed: number,
   choices: MonthlyChoice[],
@@ -20,8 +17,12 @@ function runSimulation(
 
   let state: GameState = {
     month: 0,
+    week: 1, // ✅ REQUIRED
     energy: 55,
     cash: 0,
+    onWelfare: false,
+    welfareWeeksThisMonth: 0,
+    welfareCooldownMonths: 0,
     jobId: "clerk",
     hasPassport: false,
     passportMonthsLeft: 0,
@@ -33,6 +34,11 @@ function runSimulation(
     attendingAgency: true,
     pendingCvCourse: false,
     exited: false,
+    workWeeksThisMonth: 0,
+    highEnergyWorkWeeksThisMonth: 0,
+    weeksSinceLastPromotionReview: 0,
+    onPerformanceGracePeriod: false,
+    performanceGraceWeeksLeft: 0,
     distressLog: [],
     log: [],
     ...initial,

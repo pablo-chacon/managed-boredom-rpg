@@ -19,6 +19,7 @@ type WeeklyChoice =
   | "rest"
   | "quit";
 
+
 const VALID_CHOICES: readonly WeeklyChoice[] = [
   "work",
   "unemployment",
@@ -28,6 +29,7 @@ const VALID_CHOICES: readonly WeeklyChoice[] = [
   "quit",
 ];
 
+
 function parseChoice(input: string): WeeklyChoice | null {
   const trimmed = input.trim();
   return (VALID_CHOICES as readonly string[]).includes(trimmed)
@@ -35,19 +37,23 @@ function parseChoice(input: string): WeeklyChoice | null {
     : null;
 }
 
+
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
 
+
 function ask(question: string): Promise<string> {
   return new Promise(resolve => rl.question(question, resolve));
 }
+
 
 async function main() {
   console.log("Managed Boredom");
   console.log("");
 
+  
   const gate = new MockGate();
   const params = {
     chainId: 1,
@@ -56,12 +62,15 @@ async function main() {
     player: "0xplayer",
   };
 
+
   if (!(await gate.hasAccess(params))) {
     console.log("Access denied.");
     process.exit(1);
   }
 
+
   const rng = new RNG(await gate.seedFor(params));
+
 
   let state: GameState = {
     month: 0,
@@ -91,6 +100,7 @@ async function main() {
     log: [],
   };
 
+
   console.log("Due to reconstruction, your position has been terminated.");
   console.log("Record high bonuses for board members...");
   console.log("");
@@ -102,6 +112,7 @@ async function main() {
 
   console.log(`Final salary paid: $${finalGross - tax} after tax.`);
   console.log("");
+
 
   while (!state.exited) {
     console.log("");
@@ -122,12 +133,14 @@ async function main() {
     const raw = await ask("> ");
     const choice = parseChoice(raw);
 
+
     if (!choice) {
       const reply = await respondWithAI(raw, "system", state);
       console.log(reply.text);
       state = reply.state;
       continue;
     }
+
 
     if (choice === "quit") {
       console.log("Session ended.");
@@ -145,6 +158,7 @@ async function main() {
       UNEMPLOYMENT_CFG
     );
 
+
     for (const line of state.log.slice(-12)) {
       console.log(line);
     }
@@ -159,5 +173,6 @@ async function main() {
 
   rl.close();
 }
+
 
 main();
