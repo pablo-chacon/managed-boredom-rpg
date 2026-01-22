@@ -7,7 +7,7 @@ import { JOBS } from "./config/jobs";
 import { ILLEGAL_WORK_CFG } from "./config/illegal";
 import { DOCTOR_CFG } from "./config/doctor";
 import { UNEMPLOYMENT_CFG } from "./config/unemployment";
-import { respondWithAI } from "./game/aiWrapper";
+import { respondWithAI } from "./game/ai/aiWrapper";
 import { MockGate } from "./adapters/mock";
 
 type WeeklyChoice =

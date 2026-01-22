@@ -1,6 +1,6 @@
-import { guardInput } from "./aiGuard";
-import { npcDeflection, systemDeflection } from "./aiResponses";
-import { callLLM } from "./callLLM";
+import { guardInput } from "./ai/aiGuard";
+import { npcDeflection, systemDeflection } from "./ai/aiResponses";
+import { callLLM } from "./ai/callLLM";
 
 
 async function respondWithAI(

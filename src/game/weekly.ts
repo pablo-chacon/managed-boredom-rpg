@@ -98,7 +98,7 @@ export function resolveWeeklyStep(
     const res = resolveIllegalWorkMonth(
       rng,
       next,
-      economy.living.monthlyCost / 4,
+      economy.living.monthlyCost / 3,
       illegalCfg
     );
     next = res.state;

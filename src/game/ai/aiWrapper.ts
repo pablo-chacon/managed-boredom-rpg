@@ -1,10 +1,10 @@
 // AI-Wrapper
-import { guardInput } from "./aiGuard";
-import { npcDeflection, systemDeflection } from "./aiResponses";
+import { guardInput } from "./ai/aiGuard";
+import { npcDeflection, systemDeflection } from "./ai/aiResponses";
 import { DistressEvent } from "./distress";
 import { GameState } from "./state";
 import { callLLM } from "./callLLM";
-import { SYSTEM_PROMPT, NPC_PROMPT } from "./aiPrompts";
+import { SYSTEM_PROMPT, NPC_PROMPT } from "./ai/aiPrompts";
 
 
 export async function respondWithAI(
