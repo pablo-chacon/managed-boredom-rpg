@@ -1,5 +1,5 @@
 import { RNG } from "../src/game/rng";
-import { resolveMonthlyStep, MonthlyChoice } from "../src/game/monthly";
+import { resolveWeeklyStep, WeeklyChoice } from "../src/game/weekly";
 import { GameState } from "../src/game/state";
 import { ECONOMY } from "../src/config/economy";
 import { JOBS } from "../src/config/jobs";
@@ -10,7 +10,7 @@ import { UNEMPLOYMENT_CFG } from "../src/config/unemployment";
 // Run deterministic sequence of choices
 function runSimulation(
   seed: number,
-  choices: MonthlyChoice[],
+  choices: WeeklyChoice[],
   initial?: Partial<GameState>
 ): GameState {
   const rng = new RNG(seed);
@@ -47,7 +47,7 @@ function runSimulation(
   for (const choice of choices) {
     if (state.exited) break;
 
-    state = resolveMonthlyStep(
+    state = resolveWeeklyStep(
       rng,
       state,
       choice,
@@ -65,7 +65,7 @@ function runSimulation(
 describe("Managed Boredom deterministic core", () => {
   it("produces identical state for identical seed and choices", () => {
     const seed = 1337;
-    const choices: MonthlyChoice[] = [
+    const choices: WeeklyChoice[] = [
       "work",
       "rest",
       "illegal_work",
@@ -81,7 +81,7 @@ describe("Managed Boredom deterministic core", () => {
 
   it("never throws for valid choice sequences", () => {
     const seed = 1;
-    const choices: MonthlyChoice[] = [
+    const choices: WeeklyChoice[] = [
       "work",
       "work",
       "rest",
@@ -96,7 +96,7 @@ describe("Managed Boredom deterministic core", () => {
 
   it("does not exit without formal exit conditions", () => {
     const seed = 42;
-    const choices: MonthlyChoice[] = [
+    const choices: WeeklyChoice[] = [
       "illegal_work",
       "illegal_work",
       "illegal_work",
@@ -110,7 +110,7 @@ describe("Managed Boredom deterministic core", () => {
 
   it("energy always remains within bounds", () => {
     const seed = 999;
-    const choices: MonthlyChoice[] = Array(24).fill("illegal_work");
+    const choices: WeeklyChoice[] = Array(24).fill("illegal_work");
 
     const end = runSimulation(seed, choices);
 
@@ -120,7 +120,7 @@ describe("Managed Boredom deterministic core", () => {
 
   it("cash never becomes NaN or infinite", () => {
     const seed = 2024;
-    const choices: MonthlyChoice[] = [
+    const choices: WeeklyChoice[] = [
       "work",
       "illegal_work",
       "rest",
@@ -136,7 +136,7 @@ describe("Managed Boredom deterministic core", () => {
 
   it("distress log entries are structurally valid if present", () => {
     const seed = 777;
-    const choices: MonthlyChoice[] = [
+    const choices: WeeklyChoice[] = [
       "illegal_work",
       "illegal_work",
       "illegal_work",
