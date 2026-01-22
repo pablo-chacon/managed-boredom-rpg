@@ -10,6 +10,7 @@ import { UNEMPLOYMENT_CFG } from "./config/unemployment";
 import { respondWithAI } from "./game/ai/aiWrapper";
 import { MockGate } from "./adapters/mock";
 
+
 type WeeklyChoice =
   | "work"
   | "unemployment"
