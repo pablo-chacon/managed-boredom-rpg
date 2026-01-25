@@ -108,7 +108,7 @@ export function resolveUnemploymentMonth(
     next.pendingCvCourse = false;
   }
 
-  // JOB ROLL (ONCE)
+  // JOB ROLL
   let effectiveJobChance = next.jobChance;
 
   if (next.onWelfare || next.welfareCooldownMonths > 0) {

@@ -1,9 +1,3 @@
-Below is a **production-ready README.md** aligned with CUT principles, your Managed Boredom concept, and the constraints you specified.
-
-No em-dashes.
-Arrows use `->` only.
-No spoilers about illegal exit behavior.
-Neutral, infrastructure-correct framing.
 
 ---
 

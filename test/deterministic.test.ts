@@ -17,7 +17,7 @@ function runSimulation(
 
   let state: GameState = {
     month: 0,
-    week: 1, // ✅ REQUIRED
+    week: 1, // REQUIRED
     energy: 55,
     cash: 0,
     onWelfare: false,

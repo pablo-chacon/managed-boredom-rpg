@@ -1,5 +1,3 @@
-// src/game/content/lorem.ts
-
 import { RNG } from "../rng";
 
 const WORDS = [
