@@ -8,7 +8,6 @@ import { resolveUnemploymentMonth, UnemploymentConfig } from "./unemployment";
 import { Job } from "../config/jobs";
 import { HR_MESSAGES } from "./content/hr";
 
-
 export type WeeklyChoice =
   | "work"
   | "unemployment"
@@ -16,7 +15,19 @@ export type WeeklyChoice =
   | "visit_doctor"
   | "rest";
 
-  
+/**
+ * Welfare month choreography.
+ * Not exposed to UI. This is enforcement logic.
+ */
+export function welfarePhase(
+  state: GameState
+): "meeting" | "applications" | "recovery" | "filing" {
+  if (state.welfareWeeksThisMonth <= 1) return "meeting";
+  if (state.welfareWeeksThisMonth === 2) return "applications";
+  if (state.welfareWeeksThisMonth === 3) return "recovery";
+  return "filing";
+}
+
 export function resolveWeeklyStep(
   rng: RNG,
   state: GameState,
@@ -32,53 +43,26 @@ export function resolveWeeklyStep(
 
   log.push(`--- Week ${state.week} ---`);
 
-  // Auto-enter welfare with tolerance buffer
-  if (next.cash < -150 && !next.onWelfare) {
-    next.onWelfare = true;
-    next.welfareWeeksThisMonth = 0;
-    log.push("Welfare support activated.");
-  }
-  
-  // WEEKLY ACTION
-  if (state.jobId && choice === "work") {
+  // WEEKLY ACTIONS
+  if (state.jobId && choice === "work" && !next.onWelfare) {
     const job = jobs.find(j => j.id === state.jobId)!;
 
     next.workWeeksThisMonth += 1;
     next.weeksSinceLastPromotionReview += 1;
 
-    const isHighEnergy = next.energy >= 5;
+    const highEnergy = next.energy >= 5;
+    if (highEnergy) next.highEnergyWorkWeeksThisMonth += 1;
 
-    if (isHighEnergy) {
-      next.highEnergyWorkWeeksThisMonth += 1;
-    }
-
-    next.energy = clamp(
-      next.energy - job.energyCost,
-      0,
-      100
-    );
-
+    next.energy = clamp(next.energy - job.energyCost, 0, 100);
     log.push("Worked this week.");
 
-    
     // PERFORMANCE GRACE TRIGGER
-    if (
-      !next.onPerformanceGracePeriod &&
-      !next.onWelfare &&
-      !isHighEnergy
-    ) {
-      const lowEnergyWeeks =
-        next.workWeeksThisMonth - next.highEnergyWorkWeeksThisMonth;
-
-      if (!next.onPerformanceGracePeriod) {
-        next.onPerformanceGracePeriod = true;
-        next.performanceGraceWeeksLeft = 4;
-
-        log.push(...HR_MESSAGES.graceStarted);
-      }
+    if (!highEnergy && !next.onPerformanceGracePeriod) {
+      next.onPerformanceGracePeriod = true;
+      next.performanceGraceWeeksLeft = 4;
+      log.push(...HR_MESSAGES.graceStarted);
     }
   }
-
 
   if (!state.jobId && choice === "unemployment") {
     const res = resolveUnemploymentMonth(rng, next, unemploymentCfg);
@@ -93,8 +77,7 @@ export function resolveWeeklyStep(
     log.push("Unemployment activity recorded.");
   }
 
-
-  if (choice === "illegal_work") {
+  if (choice === "illegal_work" && !next.onWelfare) {
     const res = resolveIllegalWorkMonth(
       rng,
       next,
@@ -104,7 +87,6 @@ export function resolveWeeklyStep(
     next = res.state;
     log.push("Irregular income activity processed.");
   }
-
 
   if (choice === "visit_doctor") {
     const res = resolveDoctorAppointment(next, doctorCfg);
@@ -125,17 +107,35 @@ export function resolveWeeklyStep(
     );
   }
 
-  //WELFARE TRACKING
+  
+  // WELFARE ENFORCEMENT
   if (next.onWelfare) {
     next.welfareWeeksThisMonth += 1;
+    const phase = welfarePhase(next);
 
-    if (choice === "unemployment") {
-      next.energy = clamp(next.energy - 6, 0, 100);
-      log.push("Welfare compliance meeting attended.");
+    switch (phase) {
+      case "meeting":
+        next.energy = clamp(next.energy - 8, 0, 100);
+        log.push("Mandatory welfare review meeting attended.");
+        break;
+
+      case "applications":
+        next.energy = clamp(next.energy - 10, 0, 100);
+        log.push("Job search activity monitored.");
+        break;
+
+      case "recovery":
+        log.push("Recovery week granted.");
+        break;
+
+      case "filing":
+        log.push("Monthly welfare eligibility filed.");
+        break;
     }
   }
 
-  //TIME PROGRESSION
+  
+  // TIME PROGRESSION
   if (next.week < 4) {
     next.week += 1;
   } else {

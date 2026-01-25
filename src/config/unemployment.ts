@@ -1,4 +1,5 @@
 export const UNEMPLOYMENT_CFG = {
+
   participationStipend: 85,
   stipendTaxRate: 0.30,
   applicationsRequired: 14,
@@ -11,4 +12,5 @@ export const UNEMPLOYMENT_CFG = {
   baseJobChanceMax: 0.35,
   independentJobChance: 0.27,
   decayPerQuarter: 0.02,
+
 };

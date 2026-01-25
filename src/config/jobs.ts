@@ -1,16 +1,20 @@
 export type Promotion = {
+
   nextJobId: string;
   minHighEnergyWeeks: number;
   reviewCooldownWeeks: number;
+
 };
 
 
 export type Job = {
+
   readonly id: string;
   readonly label: string;
   readonly grossMonthly: number;
   readonly energyCost: number;
   readonly promotion?: Promotion;
+
 };
 
 

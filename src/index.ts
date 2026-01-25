@@ -10,7 +10,6 @@ import { UNEMPLOYMENT_CFG } from "./config/unemployment";
 import { respondWithAI } from "./game/ai/aiWrapper";
 import { MockGate } from "./adapters/mock";
 
-
 type WeeklyChoice =
   | "work"
   | "unemployment"
@@ -18,7 +17,6 @@ type WeeklyChoice =
   | "visit_doctor"
   | "rest"
   | "quit";
-
 
 const VALID_CHOICES: readonly WeeklyChoice[] = [
   "work",
@@ -29,31 +27,31 @@ const VALID_CHOICES: readonly WeeklyChoice[] = [
   "quit",
 ];
 
+function getStatusLabel(state: GameState): string {
+  if (state.onWelfare) return "On Welfare";
+  if (state.jobId) return "Employed";
+  return "Unemployed";
+}
 
 function parseChoice(input: string): WeeklyChoice | null {
   const trimmed = input.trim();
-  return (VALID_CHOICES as readonly string[]).includes(trimmed)
+  return VALID_CHOICES.includes(trimmed as WeeklyChoice)
     ? (trimmed as WeeklyChoice)
     : null;
 }
-
 
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
 
-
 function ask(question: string): Promise<string> {
   return new Promise(resolve => rl.question(question, resolve));
 }
 
-
 async function main() {
-  console.log("Managed Boredom");
-  console.log("");
+  console.log("Managed Boredom\n");
 
-  
   const gate = new MockGate();
   const params = {
     chainId: 1,
@@ -62,15 +60,12 @@ async function main() {
     player: "0xplayer",
   };
 
-
   if (!(await gate.hasAccess(params))) {
     console.log("Access denied.");
     process.exit(1);
   }
 
-
   const rng = new RNG(await gate.seedFor(params));
-
 
   let state: GameState = {
     month: 0,
@@ -100,47 +95,59 @@ async function main() {
     log: [],
   };
 
-
   console.log("Due to reconstruction, your position has been terminated.");
-  console.log("Record high bonuses for board members...");
-  console.log("");
+  console.log("Record high bonuses for board members...\n");
 
   const finalGross = JOBS.find(j => j.id === state.jobId)!.grossMonthly;
   const tax = Math.round(finalGross * ECONOMY.income.taxRate);
   state.cash += finalGross - tax;
   state.jobId = "";
 
-  console.log(`Final salary paid: $${finalGross - tax} after tax.`);
-  console.log("");
-
+  console.log(`Final salary paid: $${finalGross - tax} after tax.\n`);
 
   while (!state.exited) {
-    console.log("");
-    console.log(`Month ${state.month + 1}, Week ${state.week}`);
+    console.log(`\nMonth ${state.month + 1}, Week ${state.week}`);
     console.log(`Cash: $${state.cash}`);
     console.log(`Energy: ${state.energy}`);
-    console.log(`Status: ${state.jobId ? "Employed" : "Unemployed"}`);
-    console.log("");
+    console.log(`Status: ${getStatusLabel(state)}`);
 
-    console.log("Choose action:");
-    if (state.jobId) console.log("  work");
-    if (!state.jobId) console.log("  unemployment");
-    console.log("  illegal_work");
-    console.log("  visit_doctor");
-    console.log("  rest");
+    if (state.onWelfare) {
+      console.log(
+        `Welfare compliance: week ${state.welfareWeeksThisMonth}/4`
+      );
+    }
+
+    console.log("\nChoose action:");
+
+    if (state.onWelfare) {
+      console.log("  unemployment  // mandatory welfare compliance");
+      console.log("  rest");
+      console.log("  visit_doctor");
+    } else {
+      if (state.jobId) console.log("  work");
+      if (!state.jobId) console.log("  unemployment");
+      console.log("  illegal_work");
+      console.log("  visit_doctor");
+      console.log("  rest");
+    }
+
     console.log("  quit");
 
     const raw = await ask("> ");
     const choice = parseChoice(raw);
 
-
     if (!choice) {
+      // Prevent AI from swallowing turns during welfare
+      if (state.onWelfare) {
+        console.log("Invalid input. Welfare compliance requires a valid action.");
+        continue;
+      }
+
       const reply = await respondWithAI(raw, "system", state);
       console.log(reply.text);
       state = reply.state;
       continue;
     }
-
 
     if (choice === "quit") {
       console.log("Session ended.");
@@ -158,21 +165,17 @@ async function main() {
       UNEMPLOYMENT_CFG
     );
 
-
     for (const line of state.log.slice(-12)) {
       console.log(line);
     }
 
     if (state.exited) {
-      console.log("");
-      console.log("Exit achieved.");
-      console.log("Session complete.");
+      console.log("\nExit achieved.\nSession complete.");
       break;
     }
   }
 
   rl.close();
 }
-
 
 main();
