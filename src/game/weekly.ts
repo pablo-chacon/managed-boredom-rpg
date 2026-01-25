@@ -8,6 +8,7 @@ import { resolveUnemploymentMonth, UnemploymentConfig } from "./unemployment";
 import { Job } from "../config/jobs";
 import { HR_MESSAGES } from "./content/hr";
 
+
 export type WeeklyChoice =
   | "work"
   | "unemployment"
@@ -28,6 +29,7 @@ export function welfarePhase(
   return "filing";
 }
 
+
 export function resolveWeeklyStep(
   rng: RNG,
   state: GameState,
@@ -43,9 +45,14 @@ export function resolveWeeklyStep(
 
   log.push(`--- Week ${state.week} ---`);
 
-  // WEEKLY ACTIONS
-  if (state.jobId && choice === "work" && !next.onWelfare) {
-    const job = jobs.find(j => j.id === state.jobId)!;
+  // INVARIANT ENFORCEMENT
+  if (next.onWelfare && next.jobId !== "") {
+    next.jobId = "";
+  }
+
+  // WORK
+  if (choice === "work" && next.jobId && !next.onWelfare) {
+    const job = jobs.find(j => j.id === next.jobId)!;
 
     next.workWeeksThisMonth += 1;
     next.weeksSinceLastPromotionReview += 1;
@@ -56,7 +63,6 @@ export function resolveWeeklyStep(
     next.energy = clamp(next.energy - job.energyCost, 0, 100);
     log.push("Worked this week.");
 
-    // PERFORMANCE GRACE TRIGGER
     if (!highEnergy && !next.onPerformanceGracePeriod) {
       next.onPerformanceGracePeriod = true;
       next.performanceGraceWeeksLeft = 4;
@@ -64,20 +70,25 @@ export function resolveWeeklyStep(
     }
   }
 
-  if (!state.jobId && choice === "unemployment") {
+  // UNEMPLOYMENT
+  if (choice === "unemployment" && !next.jobId) {
     const res = resolveUnemploymentMonth(rng, next, unemploymentCfg);
     next = res.state;
 
-    if (res.result.gotJob) {
+    // IMPORTANT: job assignment is deferred if on welfare
+    if (res.result.gotJob && !next.onWelfare) {
       const job = rng.pick(jobs);
       next.jobId = job.id;
       log.push(`Job assigned: ${job.label}.`);
+    } else if (res.result.gotJob && next.onWelfare) {
+      log.push("Employment opportunity noted. Deferred due to welfare status.");
     }
 
     log.push("Unemployment activity recorded.");
   }
 
-  if (choice === "illegal_work" && !next.onWelfare) {
+  // ILLEGAL WORK
+  if (choice === "illegal_work" && !next.onWelfare && !next.jobId) {
     const res = resolveIllegalWorkMonth(
       rng,
       next,
@@ -88,12 +99,14 @@ export function resolveWeeklyStep(
     log.push("Irregular income activity processed.");
   }
 
+  // DOCTOR
   if (choice === "visit_doctor") {
     const res = resolveDoctorAppointment(next, doctorCfg);
     next = res.state;
     log.push("Healthcare follow-up processed.");
   }
 
+  // REST
   if (choice === "rest") {
     next.energy = clamp(
       next.energy + (next.onWelfare ? 3 : 5),
@@ -107,7 +120,6 @@ export function resolveWeeklyStep(
     );
   }
 
-  
   // WELFARE ENFORCEMENT
   if (next.onWelfare) {
     next.welfareWeeksThisMonth += 1;
@@ -134,8 +146,7 @@ export function resolveWeeklyStep(
     }
   }
 
-  
-  // TIME PROGRESSION
+  // TIME
   if (next.week < 4) {
     next.week += 1;
   } else {

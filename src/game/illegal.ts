@@ -28,71 +28,61 @@ export function resolveIllegalWorkMonth(
 ): { state: GameState; result: IllegalResolutionResult } {
   const notes: string[] = [];
 
-  // Monthly illegal income
   const illegalIncome = Math.round(livingMonthlyCost * cfg.incomeCoveragePct);
+  const busted = rng.nextFloat() < cfg.bustChance;
 
-  // Bust check
-  const roll = rng.nextFloat();
-  const busted = roll < cfg.bustChance;
-
-  
   if (!busted) {
-    // Successful month
-    const cashDelta = illegalIncome;
-    const energyDelta = -cfg.energyCost;
-
-
-    notes.push(`Illegal income received: +$${illegalIncome}.`);
-    notes.push(`Energy drained by high-risk work.`);
-
-
     const next: GameState = {
       ...state,
-      cash: state.cash + cashDelta,
-      energy: clamp(state.energy + energyDelta, 0, 100),
-      // Illegal income cannot be used for exit
+      cash: state.cash + illegalIncome,
+      energy: clamp(state.energy - cfg.energyCost, 0, 100),
       log: [
         ...state.log,
-        ...notes,
+        `Illegal income received: +$${illegalIncome}.`,
+        `Energy drained by high-risk work.`,
       ],
     };
 
     return {
       state: next,
-      result: { busted: false, cashDelta, energyDelta, notes },
+      result: {
+        busted: false,
+        cashDelta: illegalIncome,
+        energyDelta: -cfg.energyCost,
+        notes,
+      },
     };
   }
 
-  // Bust resolution framed as care
-  notes.push(`Irregular activity detected.`);
-  notes.push(`Support review initiated.`);
-  notes.push(`A healthcare follow-up has been scheduled.`);
-
-  // Financial reset
-  const cashReset = -state.cash;
-
-  // Energy collapse to a survivable floor
+  // BUST: enforced collapse
   const postBustEnergy =
     Math.floor(
       cfg.postBustEnergyMin +
       rng.nextFloat() * (cfg.postBustEnergyMax - cfg.postBustEnergyMin)
     );
 
-  // Doctor appointment is scheduled.
-  // Player likely has no funds to buy medication
   const next: GameState = {
     ...state,
+    jobId: "",                    // HARD TERMINATION
+    onWelfare: false,              // evaluated later
+    attendingAgency: true,
+    unemployedMonths: 0,
+    jobChance: 0,
+    workWeeksThisMonth: 0,
+    highEnergyWorkWeeksThisMonth: 0,
+    weeksSinceLastPromotionReview: 0,
+    onPerformanceGracePeriod: false,
+    performanceGraceWeeksLeft: 0,
     cash: 0,
     energy: clamp(postBustEnergy, 0, 100),
-    antidepressantMonthsLeft: 0, // prescription may be issued elsewhere, purchase not automatic
-    // Re-enter unemployment flow implicitly by losing illegal income
     log: [
       ...state.log,
-      ...notes,
-      `We're here to help you.`,
-      `All funds reset.`,
+      "Irregular activity detected.",
+      "Support review initiated.",
+      "Employment terminated.",
+      "All funds reset.",
       `Energy reduced to ${postBustEnergy}.`,
-      `Prescription issued. Follow-up recommended.`,
+      "Prescription issued. Follow-up recommended.",
     ],
   };
 
@@ -100,7 +90,7 @@ export function resolveIllegalWorkMonth(
     state: next,
     result: {
       busted: true,
-      cashDelta: cashReset,
+      cashDelta: -state.cash,
       energyDelta: postBustEnergy - state.energy,
       notes,
     },

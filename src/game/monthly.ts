@@ -13,33 +13,27 @@ export function applyMonthlySettlement(
 
   log.push(`--- Month ${state.month + 1} settlement ---`);
 
-  // RESET MONTHLY COUNTERS
   let {
+    jobId,
+    onWelfare,
     onPerformanceGracePeriod,
     performanceGraceWeeksLeft,
     highEnergyWorkWeeksThisMonth,
     workWeeksThisMonth,
     weeksSinceLastPromotionReview,
-    jobId,
-    onWelfare,
   } = state;
 
-  let welfareWeeksThisMonth = onWelfare ? 0 : state.welfareWeeksThisMonth;
-
-  // PERFORMANCE GRACE RESOLUTION
+  // PERFORMANCE GRACE
   if (onPerformanceGracePeriod) {
     performanceGraceWeeksLeft -= 4;
 
     if (performanceGraceWeeksLeft <= 0) {
-      const metRecoveryThreshold = highEnergyWorkWeeksThisMonth >= 3;
-
-      if (metRecoveryThreshold) {
+      if (highEnergyWorkWeeksThisMonth >= 3) {
         log.push(
           "Performance review completed.",
           "Improvement acknowledged.",
           "Expectations reinstated."
         );
-
         onPerformanceGracePeriod = false;
         performanceGraceWeeksLeft = 0;
       } else {
@@ -48,12 +42,9 @@ export function applyMonthlySettlement(
           "Required standards were not met.",
           "Your position has been terminated."
         );
-
         jobId = "";
         onPerformanceGracePeriod = false;
         performanceGraceWeeksLeft = 0;
-
-        // Forced unemployment path
         state.attendingAgency = true;
         state.unemployedMonths = 0;
         state.jobChance = 0;
@@ -61,66 +52,33 @@ export function applyMonthlySettlement(
     }
   }
 
-  
-  // SALARY + PROMOTION REVIEW
-  if (jobId) {
+  // SALARY (only if employed AND not on welfare)
+  if (jobId && !onWelfare) {
     const job = jobs.find(j => j.id === jobId)!;
-
-    // Salary payout
-    const gross = job.grossMonthly;
-    const tax = Math.round(gross * economy.income.taxRate);
-    const net = gross - tax;
+    const net = job.grossMonthly -
+      Math.round(job.grossMonthly * economy.income.taxRate);
 
     cash += net;
     log.push(`Salary paid: +$${net} after tax.`);
-
-    // Promotion review
-    if (
-      job.promotion &&
-      weeksSinceLastPromotionReview >= job.promotion.reviewCooldownWeeks &&
-      workWeeksThisMonth >= 3
-    ) {
-      weeksSinceLastPromotionReview = 0;
-
-      if (highEnergyWorkWeeksThisMonth >= job.promotion.minHighEnergyWeeks) {
-        const successChance = 0.25;
-
-        if (rng.next() < successChance) {
-          const nextJob = jobs.find(j => j.id === job.promotion!.nextJobId)!;
-          log.push("Management is impressed with your consistency.");
-          log.push(`You have been promoted to ${nextJob.label}.`);
-
-          jobId = nextJob.id;
-        } else {
-          log.push("Management appreciates your effort.");
-          log.push("This opportunity was assigned elsewhere.");
-        }
-      } else {
-        log.push("Performance expectations were not fully met.");
-      }
-    }
   }
 
-  // LIVING COSTS
+  // COSTS
   const living = economy.living.monthlyCost;
   const vat = Math.round(living * economy.vat.rate);
   cash -= living + vat;
-
   log.push(`Living costs deducted: $${living} + VAT $${vat}.`);
 
-  
-  // WELFARE ENTRY (MONTHLY ONLY)
+  // WELFARE ENTRY
   if (!onWelfare && cash < -150) {
     onWelfare = true;
-    welfareWeeksThisMonth = 0;
-
+    jobId = ""; // HARD INVARIANT
     log.push(
       "Financial review completed.",
       "Temporary welfare assistance granted."
     );
   }
 
-  // PASSPORT PROCESSING
+  // PASSPORT
   let passportMonthsLeft = state.passportMonthsLeft;
   let hasPassport = state.hasPassport;
 
@@ -132,29 +90,23 @@ export function applyMonthlySettlement(
     }
   }
 
-  // EXIT CHECK     
   const exitCost =
     economy.exit.passport.cost +
     economy.exit.travel.ticketCost +
     economy.exit.travel.flightTax;
 
   const exited = hasPassport && cash >= exitCost;
+  if (exited) log.push("Exit conditions satisfied.");
 
-  if (exited) {
-    log.push("Exit conditions satisfied.");
-  }
-
-  
-  // RETURN STATE
   return {
     ...state,
     cash,
     jobId,
+    onWelfare,
+    welfareWeeksThisMonth: onWelfare ? 0 : state.welfareWeeksThisMonth,
     hasPassport,
     passportMonthsLeft,
     exited,
-    onWelfare,
-    welfareWeeksThisMonth,
     onPerformanceGracePeriod,
     performanceGraceWeeksLeft,
     workWeeksThisMonth: 0,
