@@ -20,6 +20,7 @@ export function applyMonthlySettlement(
     performanceGraceWeeksLeft,
     highEnergyWorkWeeksThisMonth,
     workWeeksThisMonth,
+    applicationsThisMonth,
     weeksSinceLastPromotionReview,
   } = state;
 
@@ -78,6 +79,21 @@ export function applyMonthlySettlement(
     );
   }
 
+  // UNEMPLOYMENT / WELFARE COMPLIANCE CHECK
+  if (!jobId) {
+    const complianceRatio = Math.min(1, applicationsThisMonth / 14);
+
+    if (complianceRatio < 1) {
+      log.push(
+        `Insufficient job search activity recorded.`,
+        `Applications submitted: ${applicationsThisMonth}/14.`
+      );
+
+      // Suppress job chance
+      state.jobChance *= complianceRatio;
+    }
+  }
+
   // PASSPORT
   let passportMonthsLeft = state.passportMonthsLeft;
   let hasPassport = state.hasPassport;
@@ -110,6 +126,7 @@ export function applyMonthlySettlement(
     onPerformanceGracePeriod,
     performanceGraceWeeksLeft,
     workWeeksThisMonth: 0,
+    applicationsThisMonth: 0,
     highEnergyWorkWeeksThisMonth: 0,
     weeksSinceLastPromotionReview,
     log: [...state.log, ...log],

@@ -32,6 +32,7 @@ export type GameState = {
   log: string[];
   exited: boolean;
   unemployedMonths: number;
+  applicationsThisMonth: number;
   weeksWithoutAgency: number;
   jobChance: number;
   attendingAgency: boolean;

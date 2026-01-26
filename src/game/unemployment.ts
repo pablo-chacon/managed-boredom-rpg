@@ -8,6 +8,7 @@ export type UnemploymentConfig = {
   stipendTaxRate: number;
   applicationsRequired: number;
   applicationEnergyCost: number;
+  applicationsThisMonth: number;
   monthlyParticipationEnergyCost: number;
   cvCourseEnergyCost: number;
   cvCourseDaysLost: number;

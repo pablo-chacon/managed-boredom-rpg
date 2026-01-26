@@ -81,6 +81,7 @@ async function main() {
     hasTicket: false,
     antidepressantMonthsLeft: 0,
     unemployedMonths: 0,
+    applicationsThisMonth: 0,
     weeksWithoutAgency: 0,
     jobChance: 0,
     attendingAgency: true,

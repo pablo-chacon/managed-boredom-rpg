@@ -35,6 +35,7 @@ function runSimulation(
     pendingCvCourse: false,
     exited: false,
     workWeeksThisMonth: 0,
+    applicationsThisMonth: 0,
     highEnergyWorkWeeksThisMonth: 0,
     weeksSinceLastPromotionReview: 0,
     onPerformanceGracePeriod: false,

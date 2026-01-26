@@ -1,9 +1,10 @@
 export const UNEMPLOYMENT_CFG = {
 
-  participationStipend: 85,
+  participationStipend: 65,
   stipendTaxRate: 0.30,
   applicationsRequired: 14,
   applicationEnergyCost: 1,
+  applicationsThisMonth: 0,
   monthlyParticipationEnergyCost: 8,
   cvCourseEnergyCost: 20,
   cvCourseDaysLost: 3,
