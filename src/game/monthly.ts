@@ -1,6 +1,8 @@
 import { RNG } from "./rng";
 import { GameState, Economy } from "./state";
 import { Job } from "../config/jobs";
+import { NEWS_FLASHES } from "./content/news";
+
 
 export function applyMonthlySettlement(
   state: GameState,
@@ -11,7 +13,15 @@ export function applyMonthlySettlement(
   const log: string[] = [];
   let cash = state.cash;
 
+  
   log.push(`--- Month ${state.month + 1} settlement ---`);
+
+  // News Flash
+  const news = NEWS_FLASHES[
+    Math.floor(rng.nextFloat() * NEWS_FLASHES.length)
+  ];
+  log.push(news);
+
 
   let {
     jobId,
