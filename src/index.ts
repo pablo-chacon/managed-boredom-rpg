@@ -10,6 +10,7 @@ import { UNEMPLOYMENT_CFG } from "./config/unemployment";
 import { respondWithAI } from "./game/ai/aiWrapper";
 import { MockGate } from "./adapters/mock";
 
+
 type WeeklyChoice =
   | "work"
   | "unemployment"
@@ -17,6 +18,7 @@ type WeeklyChoice =
   | "visit_doctor"
   | "rest"
   | "quit";
+
 
 const VALID_CHOICES: readonly WeeklyChoice[] = [
   "work",
@@ -27,11 +29,13 @@ const VALID_CHOICES: readonly WeeklyChoice[] = [
   "quit",
 ];
 
+
 function getStatusLabel(state: GameState): string {
   if (state.onWelfare) return "On Welfare";
   if (state.jobId) return "Employed";
   return "Unemployed";
 }
+
 
 function parseChoice(input: string): WeeklyChoice | null {
   const trimmed = input.trim();

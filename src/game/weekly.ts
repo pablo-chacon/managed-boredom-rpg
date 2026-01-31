@@ -72,10 +72,33 @@ export function resolveWeeklyStep(
 
   // UNEMPLOYMENT
   if (choice === "unemployment" && !next.jobId) {
+    const energyAvailable = next.energy;
+
+    // Global rule:
+    // Can only apply as many jobs as energy allows, max 14 per month
+    const remainingCapacity = Math.max(0, 14 - next.applicationsThisMonth);
+    const applicationsThisWeek = Math.min(
+      energyAvailable,
+      remainingCapacity
+    );
+
+    if (applicationsThisWeek > 0) {
+      next.applicationsThisMonth += applicationsThisWeek;
+      next.energy = clamp(next.energy - applicationsThisWeek, 0, 100);
+
+      log.push(
+        `${applicationsThisWeek} job applications submitted this week.`,
+        `Total this month: ${next.applicationsThisMonth}/14.`
+      );
+    } else {
+      log.push("No remaining capacity for job applications this month.");
+    }
+
+    // Run unemployment logic (chance, decay, courses, etc.)
     const res = resolveUnemploymentMonth(rng, next, unemploymentCfg);
     next = res.state;
 
-    // IMPORTANT: job assignment is deferred if on welfare
+    // Job assignment only if not on welfare
     if (res.result.gotJob && !next.onWelfare) {
       const job = rng.pick(jobs);
       next.jobId = job.id;
