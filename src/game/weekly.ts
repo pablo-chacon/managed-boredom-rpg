@@ -4,10 +4,8 @@ import { GameState, Economy } from "./state";
 import { applyMonthlySettlement } from "./monthly";
 import { resolveIllegalWorkMonth, IllegalWorkConfig } from "./illegal";
 import { resolveDoctorAppointment, DoctorConfig } from "./doctor";
-import { resolveUnemploymentMonth, UnemploymentConfig } from "./unemployment";
 import { Job } from "../config/jobs";
 import { HR_MESSAGES } from "./content/hr";
-
 
 export type WeeklyChoice =
   | "work"
@@ -17,18 +15,29 @@ export type WeeklyChoice =
   | "rest";
 
 /**
- * Welfare month choreography.
- * Not exposed to UI. This is enforcement logic.
+ * Welfare choreography.
+ * Enforcement only. No economy or job logic here.
+ *
+ * Rules:
+ * Week 1 -> meeting
+ * Week 2 -> applications
+ * Week 3 -> none (no enforcement)
+ * Week 4 -> filing (mandatory)
  */
 export function welfarePhase(
   state: GameState
-): "meeting" | "applications" | "recovery" | "filing" {
-  if (state.welfareWeeksThisMonth <= 1) return "meeting";
-  if (state.welfareWeeksThisMonth === 2) return "applications";
-  if (state.welfareWeeksThisMonth === 3) return "recovery";
-  return "filing";
+): "meeting" | "applications" | "none" | "filing" {
+  switch (state.welfareWeeksThisMonth) {
+    case 1:
+      return "meeting";
+    case 2:
+      return "applications";
+    case 4:
+      return "filing";
+    default:
+      return "none";
+  }
 }
-
 
 export function resolveWeeklyStep(
   rng: RNG,
@@ -37,15 +46,14 @@ export function resolveWeeklyStep(
   economy: Economy,
   jobs: readonly Job[],
   illegalCfg: IllegalWorkConfig,
-  doctorCfg: DoctorConfig,
-  unemploymentCfg: UnemploymentConfig
+  doctorCfg: DoctorConfig
 ): GameState {
   let next: GameState = { ...state };
   const log: string[] = [];
 
   log.push(`--- Week ${state.week} ---`);
 
-  // INVARIANT ENFORCEMENT
+  // HARD INVARIANT
   if (next.onWelfare && next.jobId !== "") {
     next.jobId = "";
   }
@@ -70,17 +78,10 @@ export function resolveWeeklyStep(
     }
   }
 
-  // UNEMPLOYMENT
+  // UNEMPLOYMENT (APPLICATION ACCUMULATION ONLY)
   if (choice === "unemployment" && !next.jobId) {
-    const energyAvailable = next.energy;
-
-    // Global rule:
-    // Can only apply as many jobs as energy allows, max 14 per month
     const remainingCapacity = Math.max(0, 14 - next.applicationsThisMonth);
-    const applicationsThisWeek = Math.min(
-      energyAvailable,
-      remainingCapacity
-    );
+    const applicationsThisWeek = Math.min(next.energy, remainingCapacity);
 
     if (applicationsThisWeek > 0) {
       next.applicationsThisMonth += applicationsThisWeek;
@@ -92,19 +93,6 @@ export function resolveWeeklyStep(
       );
     } else {
       log.push("No remaining capacity for job applications this month.");
-    }
-
-    // Run unemployment logic (chance, decay, courses, etc.)
-    const res = resolveUnemploymentMonth(rng, next, unemploymentCfg);
-    next = res.state;
-
-    // Job assignment only if not on welfare
-    if (res.result.gotJob && !next.onWelfare) {
-      const job = rng.pick(jobs);
-      next.jobId = job.id;
-      log.push(`Job assigned: ${job.label}.`);
-    } else if (res.result.gotJob && next.onWelfare) {
-      log.push("Employment opportunity noted. Deferred due to welfare status.");
     }
 
     log.push("Unemployment activity recorded.");
@@ -143,7 +131,7 @@ export function resolveWeeklyStep(
     );
   }
 
-  // WELFARE ENFORCEMENT
+  // WELFARE ENFORCEMENT (NON-ECONOMIC)
   if (next.onWelfare) {
     next.welfareWeeksThisMonth += 1;
     const phase = welfarePhase(next);
@@ -159,17 +147,17 @@ export function resolveWeeklyStep(
         log.push("Job search activity monitored.");
         break;
 
-      case "recovery":
-        log.push("Recovery week granted.");
-        break;
-
       case "filing":
         log.push("Monthly welfare eligibility filed.");
+        break;
+
+      case "none":
+        log.push("No scheduled welfare obligations this week.");
         break;
     }
   }
 
-  // TIME
+  // TIME ADVANCE
   if (next.week < 4) {
     next.week += 1;
   } else {

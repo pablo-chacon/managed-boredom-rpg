@@ -11,10 +11,11 @@ export function applyMonthlySettlement(
 ): GameState {
   const log: string[] = [];
   let cash = state.cash;
+  let energy = state.energy;
 
   log.push(`--- Month ${state.month + 1} settlement ---`);
 
-  // News Flash
+  // NEWS
   const news =
     NEWS_FLASHES[Math.floor(rng.nextFloat() * NEWS_FLASHES.length)];
   log.push(news);
@@ -25,12 +26,16 @@ export function applyMonthlySettlement(
     onPerformanceGracePeriod,
     performanceGraceWeeksLeft,
     highEnergyWorkWeeksThisMonth,
-    workWeeksThisMonth,
     applicationsThisMonth,
     weeksSinceLastPromotionReview,
   } = state;
 
-  // PERFORMANCE GRACE
+  // HARD INVARIANT
+  if (onWelfare && jobId) {
+    jobId = "";
+  }
+
+  // PERFORMANCE GRACE RESOLUTION
   if (onPerformanceGracePeriod) {
     performanceGraceWeeksLeft -= 4;
 
@@ -52,14 +57,11 @@ export function applyMonthlySettlement(
         jobId = "";
         onPerformanceGracePeriod = false;
         performanceGraceWeeksLeft = 0;
-        state.attendingAgency = true;
-        state.unemployedMonths = 0;
-        state.jobChance = 0;
       }
     }
   }
 
-  // SALARY (only if employed AND not on welfare)
+  // SALARY
   if (jobId && !onWelfare) {
     const job = jobs.find(j => j.id === jobId)!;
     const net =
@@ -70,7 +72,7 @@ export function applyMonthlySettlement(
     log.push(`Salary paid: +$${net} after tax.`);
   }
 
-  // STABILITY / EXCELLENCE LOOP PRESSURE
+  // STABILITY / EXCELLENCE LOOP
   let stabilityMultiplier = 1.0;
 
   if (!onWelfare && jobId) {
@@ -79,7 +81,6 @@ export function applyMonthlySettlement(
     else if (cash > 1200) stabilityMultiplier = 1.08;
   }
 
-  // COSTS
   const baseLiving = economy.living.monthlyCost;
   const living = Math.round(baseLiving * stabilityMultiplier);
   const vat = Math.round(living * economy.vat.rate);
@@ -95,14 +96,13 @@ export function applyMonthlySettlement(
     log.push(`Living costs deducted: $${living} + VAT $${vat}.`);
   }
 
-  // STABILITY ENERGY SUPPRESSION
-  let energy = state.energy;
+  // STABILITY ENERGY CAP
   if (!onWelfare && jobId && cash > 1800 && energy > 45) {
     energy = 45;
     log.push("Sustained workload limits recovery.");
   }
 
-  // WELFARE ENTRY (MONTHLY ONLY, HARD INVARIANT)
+  // WELFARE ENTRY (MONTHLY ONLY)
   if (!onWelfare && cash < -150) {
     onWelfare = true;
     jobId = "";
@@ -112,7 +112,7 @@ export function applyMonthlySettlement(
     );
   }
 
-  // UNEMPLOYMENT / WELFARE COMPLIANCE CHECK
+  // UNEMPLOYMENT COMPLIANCE
   if (!jobId) {
     const complianceRatio = Math.min(1, applicationsThisMonth / 14);
 
@@ -122,6 +122,21 @@ export function applyMonthlySettlement(
         `Applications submitted: ${applicationsThisMonth}/14.`
       );
       state.jobChance *= complianceRatio;
+    }
+  }
+
+  // JOB MATCHING (MONTHLY ONLY)
+  if (!jobId && !onWelfare && applicationsThisMonth > 0) {
+    const chance = Math.min(1, state.jobChance);
+
+    if (rng.nextFloat() < chance) {
+      const job = jobs[Math.floor(rng.nextFloat() * jobs.length)];
+      jobId = job.id;
+
+      log.push(
+        "Employment opportunity matched.",
+        `You have been hired as ${job.label}.`
+      );
     }
   }
 

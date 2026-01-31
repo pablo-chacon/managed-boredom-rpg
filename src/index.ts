@@ -118,7 +118,7 @@ async function main() {
 
     if (state.onWelfare) {
       console.log(
-        `Welfare compliance: week ${state.welfareWeeksThisMonth}/4`
+        `Welfare compliance: week ${state.welfareWeeksThisMonth}/3`
       );
     }
 
@@ -167,7 +167,7 @@ async function main() {
       JOBS,
       ILLEGAL_WORK_CFG,
       DOCTOR_CFG,
-      UNEMPLOYMENT_CFG
+      // UNEMPLOYMENT_CFG
     );
 
     for (const line of state.log.slice(-12)) {
