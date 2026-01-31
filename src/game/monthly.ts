@@ -3,7 +3,6 @@ import { GameState, Economy } from "./state";
 import { Job } from "../config/jobs";
 import { NEWS_FLASHES } from "./content/news";
 
-
 export function applyMonthlySettlement(
   state: GameState,
   economy: Economy,
@@ -13,15 +12,12 @@ export function applyMonthlySettlement(
   const log: string[] = [];
   let cash = state.cash;
 
-  
   log.push(`--- Month ${state.month + 1} settlement ---`);
 
   // News Flash
-  const news = NEWS_FLASHES[
-    Math.floor(rng.nextFloat() * NEWS_FLASHES.length)
-  ];
+  const news =
+    NEWS_FLASHES[Math.floor(rng.nextFloat() * NEWS_FLASHES.length)];
   log.push(news);
-
 
   let {
     jobId,
@@ -66,23 +62,50 @@ export function applyMonthlySettlement(
   // SALARY (only if employed AND not on welfare)
   if (jobId && !onWelfare) {
     const job = jobs.find(j => j.id === jobId)!;
-    const net = job.grossMonthly -
+    const net =
+      job.grossMonthly -
       Math.round(job.grossMonthly * economy.income.taxRate);
 
     cash += net;
     log.push(`Salary paid: +$${net} after tax.`);
   }
 
-  // COSTS
-  const living = economy.living.monthlyCost;
-  const vat = Math.round(living * economy.vat.rate);
-  cash -= living + vat;
-  log.push(`Living costs deducted: $${living} + VAT $${vat}.`);
+  // STABILITY / EXCELLENCE LOOP PRESSURE
+  let stabilityMultiplier = 1.0;
 
-  // WELFARE ENTRY
+  if (!onWelfare && jobId) {
+    if (cash > 2500) stabilityMultiplier = 1.25;
+    else if (cash > 1800) stabilityMultiplier = 1.15;
+    else if (cash > 1200) stabilityMultiplier = 1.08;
+  }
+
+  // COSTS
+  const baseLiving = economy.living.monthlyCost;
+  const living = Math.round(baseLiving * stabilityMultiplier);
+  const vat = Math.round(living * economy.vat.rate);
+
+  cash -= living + vat;
+
+  if (stabilityMultiplier > 1.0) {
+    log.push(
+      "Adjusted cost of living applied.",
+      `Living costs updated: $${living} + VAT $${vat}.`
+    );
+  } else {
+    log.push(`Living costs deducted: $${living} + VAT $${vat}.`);
+  }
+
+  // STABILITY ENERGY SUPPRESSION
+  let energy = state.energy;
+  if (!onWelfare && jobId && cash > 1800 && energy > 45) {
+    energy = 45;
+    log.push("Sustained workload limits recovery.");
+  }
+
+  // WELFARE ENTRY (MONTHLY ONLY, HARD INVARIANT)
   if (!onWelfare && cash < -150) {
     onWelfare = true;
-    jobId = ""; // HARD INVARIANT
+    jobId = "";
     log.push(
       "Financial review completed.",
       "Temporary welfare assistance granted."
@@ -95,11 +118,9 @@ export function applyMonthlySettlement(
 
     if (complianceRatio < 1) {
       log.push(
-        `Insufficient job search activity recorded.`,
+        "Insufficient job search activity recorded.",
         `Applications submitted: ${applicationsThisMonth}/14.`
       );
-
-      // Suppress job chance
       state.jobChance *= complianceRatio;
     }
   }
@@ -127,10 +148,11 @@ export function applyMonthlySettlement(
   return {
     ...state,
     cash,
+    energy,
     jobId,
     onWelfare,
     welfareWeeksThisMonth: onWelfare ? 0 : state.welfareWeeksThisMonth,
-    hasPassport: state.hasPassport,
+    hasPassport,
     hasTicket: state.hasTicket,
     passportMonthsLeft,
     exited,
