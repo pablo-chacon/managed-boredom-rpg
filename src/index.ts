@@ -30,6 +30,11 @@ const VALID_CHOICES: readonly WeeklyChoice[] = [
 ];
 
 
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+
 function getStatusLabel(state: GameState): string {
   if (state.onWelfare) return "On Welfare";
   if (state.jobId) return "Employed";
@@ -100,6 +105,7 @@ async function main() {
     log: [],
   };
 
+
   console.log("Due to reconstruction, your position has been terminated.");
   console.log("Record high bonuses for board members...\n");
 
@@ -108,9 +114,13 @@ async function main() {
   state.cash += finalGross - tax;
   state.jobId = "";
 
+
   console.log(`Final salary paid: $${finalGross - tax} after tax.\n`);
 
+
   while (!state.exited) {
+
+    sleep(3000);
     console.log(`\nMonth ${state.month + 1}, Week ${state.week}`);
     console.log(`Cash: $${state.cash}`);
     console.log(`Energy: ${state.energy}`);

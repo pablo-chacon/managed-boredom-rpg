@@ -19,6 +19,7 @@ export function applyMonthlySettlement(
   const news =
     NEWS_FLASHES[Math.floor(rng.nextFloat() * NEWS_FLASHES.length)];
   log.push(news);
+  
 
   let {
     jobId,
