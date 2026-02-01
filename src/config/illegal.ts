@@ -10,7 +10,7 @@ export const ILLEGAL_WORK_CFG = {
   activities: [
     {
       id: "host",
-      label: "Host underground a rave",
+      label: "Hosted a underground rave",
       energyDrain: [8, 12] as const,
     },
     {

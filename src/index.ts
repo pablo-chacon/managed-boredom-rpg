@@ -188,7 +188,7 @@ async function main() {
       console.log(line);
     }
 
-    // Pause only after monthly settlement
+    // End user input after monthly settlement
     if (state.month !== prevMonth) {
       console.log("\n[ Press any key to continue ]");
       await waitForAnyKey();

@@ -18,9 +18,19 @@ export function applyMonthlySettlement(
   log.push(`--- Month ${state.month} settlement ---`);
 
   // NEWS
-  const news =
+  const NEWS_BORDER = "-".repeat(23);
+
+  const newsFlash =
     NEWS_FLASHES[Math.floor(rng.nextFloat() * NEWS_FLASHES.length)];
-  log.push(news);
+  
+  const news =
+    `${NEWS_BORDER}
+    ${newsFlash}
+    ${NEWS_BORDER}`;
+
+  
+  log.push(news);   
+
 
   let {
     jobId,
