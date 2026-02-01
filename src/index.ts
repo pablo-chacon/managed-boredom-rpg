@@ -10,7 +10,6 @@ import { UNEMPLOYMENT_CFG } from "./config/unemployment";
 import { respondWithAI } from "./game/ai/aiWrapper";
 import { MockGate } from "./adapters/mock";
 
-
 type WeeklyChoice =
   | "work"
   | "unemployment"
@@ -18,7 +17,6 @@ type WeeklyChoice =
   | "visit_doctor"
   | "rest"
   | "quit";
-
 
 const VALID_CHOICES: readonly WeeklyChoice[] = [
   "work",
@@ -29,18 +27,15 @@ const VALID_CHOICES: readonly WeeklyChoice[] = [
   "quit",
 ];
 
-
 async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
-
 
 function getStatusLabel(state: GameState): string {
   if (state.onWelfare) return "On Welfare";
   if (state.jobId) return "Employed";
   return "Unemployed";
 }
-
 
 function parseChoice(input: string): WeeklyChoice | null {
   const trimmed = input.trim();
@@ -56,6 +51,17 @@ const rl = readline.createInterface({
 
 function ask(question: string): Promise<string> {
   return new Promise(resolve => rl.question(question, resolve));
+}
+
+async function waitForAnyKey(): Promise<void> {
+  return new Promise(resolve => {
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.once("data", () => {
+      process.stdin.setRawMode(false);
+      resolve();
+    });
+  });
 }
 
 async function main() {
@@ -105,7 +111,6 @@ async function main() {
     log: [],
   };
 
-
   console.log("Due to reconstruction, your position has been terminated.");
   console.log("Record high bonuses for board members...\n");
 
@@ -114,13 +119,11 @@ async function main() {
   state.cash += finalGross - tax;
   state.jobId = "";
 
-
   console.log(`Final salary paid: $${finalGross - tax} after tax.\n`);
 
-
   while (!state.exited) {
+    await sleep(300);
 
-    sleep(3000);
     console.log(`\nMonth ${state.month + 1}, Week ${state.week}`);
     console.log(`Cash: $${state.cash}`);
     console.log(`Energy: ${state.energy}`);
@@ -152,7 +155,6 @@ async function main() {
     const choice = parseChoice(raw);
 
     if (!choice) {
-      // Prevent AI from swallowing turns during welfare
       if (state.onWelfare) {
         console.log("Invalid input. Welfare compliance requires a valid action.");
         continue;
@@ -169,6 +171,8 @@ async function main() {
       break;
     }
 
+    const prevMonth = state.month;
+
     state = resolveWeeklyStep(
       rng,
       state,
@@ -182,6 +186,12 @@ async function main() {
 
     for (const line of state.log.slice(-12)) {
       console.log(line);
+    }
+
+    // Pause only after monthly settlement
+    if (state.month !== prevMonth) {
+      console.log("\n[ Press any key to continue ]");
+      await waitForAnyKey();
     }
 
     if (state.exited) {

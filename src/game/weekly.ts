@@ -2,7 +2,7 @@ import { RNG } from "./rng";
 import { clamp } from "./rules";
 import { GameState, Economy } from "./state";
 import { applyMonthlySettlement } from "./monthly";
-import { resolveIllegalWorkMonth, IllegalWorkConfig } from "./illegal";
+import { resolveIllegalWorkWeek, IllegalWorkConfig } from "./illegal";
 import { resolveDoctorAppointment, DoctorConfig } from "./doctor";
 import { Job } from "../config/jobs";
 import { HR_MESSAGES } from "./content/hr";
@@ -16,12 +16,11 @@ export type WeeklyChoice =
 
 /**
  * Welfare choreography.
- * Enforcement only. No economy or job logic here.
  *
  * Rules:
- * Week 1 -> meeting
- * Week 2 -> applications
- * Week 3 -> none (no enforcement)
+ * Week 1 -> meeting (mandatory)
+ * Week 2 -> applications (mandatory)
+ * Week 3 -> none (no obligtion)
  * Week 4 -> filing (mandatory)
  */
 export function welfarePhase(
@@ -100,7 +99,7 @@ export function resolveWeeklyStep(
 
   // ILLEGAL WORK
   if (choice === "illegal_work" && !next.onWelfare && !next.jobId) {
-    const res = resolveIllegalWorkMonth(
+    const res = resolveIllegalWorkWeek(
       rng,
       next,
       economy.living.monthlyCost / 3,

@@ -3,6 +3,7 @@ import { clamp } from "./rules";
 import { GameState } from "./state";
 import { UNEMPLOYMENT_TEXT, CV_COURSE_TEXT } from "./content";
 
+
 export type UnemploymentConfig = {
   participationStipend: number;
   stipendTaxRate: number;
@@ -19,10 +20,12 @@ export type UnemploymentConfig = {
   decayPerQuarter: number;
 };
 
+
 export type UnemploymentResult = {
   gotJob: boolean;
   notes: string[];
 };
+
 
 export function resolveUnemploymentMonth(
   rng: RNG,

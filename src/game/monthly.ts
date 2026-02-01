@@ -13,13 +13,14 @@ export function applyMonthlySettlement(
   let cash = state.cash;
   let energy = state.energy;
 
-  log.push(`--- Month ${state.month + 1} settlement ---`);
+  // IMPORTANT:
+  // Settlement belongs to the CURRENT month.
+  log.push(`--- Month ${state.month} settlement ---`);
 
   // NEWS
   const news =
     NEWS_FLASHES[Math.floor(rng.nextFloat() * NEWS_FLASHES.length)];
   log.push(news);
-  
 
   let {
     jobId,
@@ -36,7 +37,7 @@ export function applyMonthlySettlement(
     jobId = "";
   }
 
-  // PERFORMANCE GRACE RESOLUTION
+  // PERFORMANCE GRACE RESOLUTION (MONTHLY)
   if (onPerformanceGracePeriod) {
     performanceGraceWeeksLeft -= 4;
 
@@ -113,7 +114,7 @@ export function applyMonthlySettlement(
     );
   }
 
-  // UNEMPLOYMENT COMPLIANCE
+  // UNEMPLOYMENT COMPLIANCE (MONTHLY EVALUATION)
   if (!jobId) {
     const complianceRatio = Math.min(1, applicationsThisMonth / 14);
 

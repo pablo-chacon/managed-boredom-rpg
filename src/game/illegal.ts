@@ -2,15 +2,24 @@ import { RNG } from "./rng";
 import { clamp } from "./rules";
 import { GameState } from "./state";
 
-
-export type IllegalWorkConfig = {
-  bustChance: number;              // 0.20
-  incomeCoveragePct: number;       // 0.40 of living costs
-  energyCost: number;              // high drain per month
-  postBustEnergyMin: number;       // 5
-  postBustEnergyMax: number;       // 10
+export type IllegalActivity = {
+  id: string;
+  label: string;
+  energyDrain: readonly [number, number];
 };
 
+export type IllegalWorkConfig = {
+  bustChance: number;
+  incomeCoveragePct: number;
+
+  // Accept readonly tuples from config
+  energyDrainRange: readonly [number, number];
+
+  postBustEnergyMin: number;
+  postBustEnergyMax: number;
+
+  activities?: readonly IllegalActivity[];
+};
 
 export type IllegalResolutionResult = {
   busted: boolean;
@@ -19,27 +28,51 @@ export type IllegalResolutionResult = {
   notes: string[];
 };
 
-
-export function resolveIllegalWorkMonth(
+export function resolveIllegalWorkWeek(
   rng: RNG,
   state: GameState,
-  livingMonthlyCost: number,
+  livingWeeklyCost: number,
   cfg: IllegalWorkConfig
 ): { state: GameState; result: IllegalResolutionResult } {
   const notes: string[] = [];
 
-  const illegalIncome = Math.round(livingMonthlyCost * cfg.incomeCoveragePct);
+  const illegalIncome = Math.round(
+    livingWeeklyCost * cfg.incomeCoveragePct
+  );
+
   const busted = rng.nextFloat() < cfg.bustChance;
+
+  const activity =
+    cfg.activities && cfg.activities.length > 0
+      ? cfg.activities[
+          Math.floor(rng.nextFloat() * cfg.activities.length)
+        ]
+      : null;
+
+  const energyDrain = activity
+    ? Math.floor(
+        activity.energyDrain[0] +
+          rng.nextFloat() *
+            (activity.energyDrain[1] - activity.energyDrain[0])
+      )
+    : Math.floor(
+        cfg.energyDrainRange[0] +
+          rng.nextFloat() *
+            (cfg.energyDrainRange[1] - cfg.energyDrainRange[0])
+      );
 
   if (!busted) {
     const next: GameState = {
       ...state,
       cash: state.cash + illegalIncome,
-      energy: clamp(state.energy - cfg.energyCost, 0, 100),
+      energy: clamp(state.energy - energyDrain, 0, 100),
       log: [
         ...state.log,
+        activity
+          ? `Engaged in ${activity.label}.`
+          : "Engaged in irregular activity.",
+        "Energy drained by high-risk work.",
         `Illegal income received: +$${illegalIncome}.`,
-        `Energy drained by high-risk work.`,
       ],
     };
 
@@ -48,23 +81,22 @@ export function resolveIllegalWorkMonth(
       result: {
         busted: false,
         cashDelta: illegalIncome,
-        energyDelta: -cfg.energyCost,
+        energyDelta: -energyDrain,
         notes,
       },
     };
   }
 
-  // BUST: enforced collapse
-  const postBustEnergy =
-    Math.floor(
-      cfg.postBustEnergyMin +
-      rng.nextFloat() * (cfg.postBustEnergyMax - cfg.postBustEnergyMin)
-    );
+  const postBustEnergy = Math.floor(
+    cfg.postBustEnergyMin +
+      rng.nextFloat() *
+        (cfg.postBustEnergyMax - cfg.postBustEnergyMin)
+  );
 
   const next: GameState = {
     ...state,
-    jobId: "",                    // HARD TERMINATION
-    onWelfare: false,              // evaluated later
+    jobId: "",
+    onWelfare: false,
     attendingAgency: true,
     unemployedMonths: 0,
     jobChance: 0,
