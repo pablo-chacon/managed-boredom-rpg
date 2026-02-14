@@ -5,7 +5,8 @@ export const HEALTHCARE_MESSAGES = {
   ],
 
   prescriptionIssued: [
-    "A standard treatment plan has been recommended."
+    "A standard treatment plan has been recommended.",
+    "You been prescribed Prozac, according to routine."
   ],
 
   medicationPurchased: [

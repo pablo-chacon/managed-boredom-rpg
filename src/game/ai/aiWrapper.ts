@@ -1,16 +1,29 @@
-// AI-Wrapper
 import { guardInput } from "./aiGuard";
 import { npcDeflection, systemDeflection } from "./aiResponses";
 import { DistressEvent } from "../distress";
-import { GameState } from "../state";
-import { callLLM } from "./callLLM";
-import { SYSTEM_PROMPT, NPC_PROMPT } from "./aiPrompts";
+import { GameState, Economy } from "../state";
+import { managedBoredomAgent } from "../managedBoredomAgent";
+import { RNG } from "../rng";
+
+
+export type AIMode = "npc" | "system";
 
 
 export async function respondWithAI(
   input: string,
-  mode: "npc" | "system",
-  state: GameState
+  mode: AIMode,
+  state: GameState,
+  economy: Economy,
+  rng: RNG,
+  opts?: {
+    caseManagerMode?: "live" | "deterministic";
+    lastEvent?: {
+      id: string;
+      label: string;
+      energyDelta: number;
+      cost: number;
+    };
+  }
 ): Promise<{ text: string; state: GameState }> {
 
   const guard = guardInput(input, mode);
@@ -34,15 +47,16 @@ export async function respondWithAI(
     };
   }
 
-  const prompt =
-    mode === "npc" ? NPC_PROMPT : SYSTEM_PROMPT;
-
-  const text = await callLLM({
-    systemPrompt: prompt,
-    userMessage: input,
+  // Delegate to Case Manager core
+  const text = await managedBoredomAgent({
+    state,
+    economy,
+    lastAction: "player_input",
+    lastEvent: opts?.lastEvent,
+    userInput: input,
+    rng,
+    mode: opts?.caseManagerMode ?? "live",
   });
 
   return { text, state };
 }
-export { callLLM };
-

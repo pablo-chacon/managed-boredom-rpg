@@ -6,7 +6,6 @@ import { ECONOMY } from "./config/economy";
 import { JOBS } from "./config/jobs";
 import { ILLEGAL_WORK_CFG } from "./config/illegal";
 import { DOCTOR_CFG } from "./config/doctor";
-import { UNEMPLOYMENT_CFG } from "./config/unemployment";
 import { respondWithAI } from "./game/ai/aiWrapper";
 import { MockGate } from "./adapters/mock";
 
@@ -138,7 +137,7 @@ async function main() {
     console.log("\nChoose action:");
 
     if (state.onWelfare) {
-      console.log("  unemployment  // mandatory welfare compliance");
+      console.log("  unemployment");
       console.log("  rest");
       console.log("  visit_doctor");
     } else {
@@ -160,7 +159,15 @@ async function main() {
         continue;
       }
 
-      const reply = await respondWithAI(raw, "system", state);
+      const reply = await respondWithAI(
+        raw,
+        "system",
+        state,
+        ECONOMY,
+        rng,
+        { caseManagerMode: "live" }
+      );
+
       console.log(reply.text);
       state = reply.state;
       continue;
@@ -173,7 +180,7 @@ async function main() {
 
     const prevMonth = state.month;
 
-    state = resolveWeeklyStep(
+    state = await resolveWeeklyStep(
       rng,
       state,
       choice,
@@ -181,14 +188,13 @@ async function main() {
       JOBS,
       ILLEGAL_WORK_CFG,
       DOCTOR_CFG,
-      // UNEMPLOYMENT_CFG
+      { caseManagerMode: "live" }
     );
 
     for (const line of state.log.slice(-12)) {
       console.log(line);
     }
 
-    // End user input after monthly settlement
     if (state.month !== prevMonth) {
       console.log("\n[ Press any key to continue ]");
       await waitForAnyKey();

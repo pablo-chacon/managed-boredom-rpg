@@ -1,23 +1,38 @@
 [
   {
     "id": "colleague_1",
-    "namePool": ["Anna", "Johan", "Sara", "Emil", "Mikael", "Lina"],
+    "namePool": ["Anna", "Johan", "Sara", "Erik", "Mikael", "Lina"],
     "rolePool": ["Colleague", "Neighbor", "Case Handler", "Receptionist"],
     "scripts": {
       "concern_low_energy": [
         "I am sorry you feel that way.",
+        "Your emotions is valid, just stay positive",
         "Have you considered talking to a doctor?",
-        "It is important to take responsibility for your wellbeing."
+        "It is important to take responsibility for your wellbeing.",
+        "It's important to never give up."
       ],
       "concern_high_energy": [
         "You seem intense lately.",
         "Do not burn out.",
-        "Stability is important."
+        "Stability is important.",
+        "Keep pushing, you're getting there."
       ],
       "neutral": [
         "Everything is fine.",
         "The process is working as intended.",
-        "Have you tried following the standard procedure?"
+        "Have you tried following the standard procedure?",
+        "If you keep going, you'll get there eventually."
+      ],
+      "worried": [
+        "We are concerned about your current trajectory.",
+        "It is important that you re-engage with the system.",
+        "Your recent pattern requires attention.",
+        "Please ensure you comply with upcoming requirements."
+      ],
+      "helpful": [
+        "You may consider organizing your obligations before proceeding.",
+        "Administrative actions are more effective when energy is stable.",
+        "Planning ahead reduces unnecessary strain."
       ]
     }
   }

@@ -13,6 +13,7 @@ export const POLICE_MESSAGES = {
   moralClosure: [
     "This is society reaching out a helping hand.",
     "Order must be maintained.",
-    "You are free to continue."
+    "You are free to continue.",
+    "We're here to help you, in this challenging life situation."
   ]
 };

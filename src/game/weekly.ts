@@ -6,6 +6,8 @@ import { resolveIllegalWorkWeek, IllegalWorkConfig } from "./illegal";
 import { resolveDoctorAppointment, DoctorConfig } from "./doctor";
 import { Job } from "../config/jobs";
 import { HR_MESSAGES } from "./content/hr";
+import { managedBoredomAgent } from "./managedBoredomAgent";
+
 
 export type WeeklyChoice =
   | "work"
@@ -14,13 +16,24 @@ export type WeeklyChoice =
   | "visit_doctor"
   | "rest";
 
+
+type CaseManagerMode = "live" | "deterministic";
+
+
+interface LastEvent {
+  id: string;
+  label: string;
+  energyDelta: number;
+  cost: number;
+}
+
 /**
- * Welfare choreography.
+ * Welfare rules.
  *
  * Rules:
  * Week 1 -> meeting (mandatory)
  * Week 2 -> applications (mandatory)
- * Week 3 -> none (no obligtion)
+ * Week 3 -> none (no obligation)
  * Week 4 -> filing (mandatory)
  */
 export function welfarePhase(
@@ -38,17 +51,35 @@ export function welfarePhase(
   }
 }
 
-export function resolveWeeklyStep(
+/**
+ * Weekly step resolver.
+ * Case Manager is deterministic.
+ */
+export async function resolveWeeklyStep(
   rng: RNG,
   state: GameState,
   choice: WeeklyChoice,
   economy: Economy,
   jobs: readonly Job[],
   illegalCfg: IllegalWorkConfig,
-  doctorCfg: DoctorConfig
-): GameState {
+  doctorCfg: DoctorConfig,
+  opts?: {
+    caseManagerMode?: CaseManagerMode;
+    caseManagerUserInput?: string;
+    lastEvent?: LastEvent;
+  }
+): Promise<GameState> {
   let next: GameState = { ...state };
   const log: string[] = [];
+
+
+  const caseManagerMode: CaseManagerMode =
+    opts?.caseManagerMode ?? "deterministic";
+
+
+  const caseManagerUserInput = opts?.caseManagerUserInput ?? "";
+  const lastEvent = opts?.lastEvent;
+
 
   log.push(`--- Week ${state.week} ---`);
 
@@ -59,25 +90,28 @@ export function resolveWeeklyStep(
 
   // WORK
   if (choice === "work" && next.jobId && !next.onWelfare) {
-    const job = jobs.find(j => j.id === next.jobId)!;
+    const job = jobs.find(j => j.id === next.jobId);
+    if (!job) {
+      log.push("Work activity failed to resolve due to missing job configuration.");
+    } else {
+      next.workWeeksThisMonth += 1;
+      next.weeksSinceLastPromotionReview += 1;
 
-    next.workWeeksThisMonth += 1;
-    next.weeksSinceLastPromotionReview += 1;
+      const highEnergy = next.energy >= 5;
+      if (highEnergy) next.highEnergyWorkWeeksThisMonth += 1;
 
-    const highEnergy = next.energy >= 5;
-    if (highEnergy) next.highEnergyWorkWeeksThisMonth += 1;
+      next.energy = clamp(next.energy - job.energyCost, 0, 100);
+      log.push("Worked this week.");
 
-    next.energy = clamp(next.energy - job.energyCost, 0, 100);
-    log.push("Worked this week.");
-
-    if (!highEnergy && !next.onPerformanceGracePeriod) {
-      next.onPerformanceGracePeriod = true;
-      next.performanceGraceWeeksLeft = 4;
-      log.push(...HR_MESSAGES.graceStarted);
+      if (!highEnergy && !next.onPerformanceGracePeriod) {
+        next.onPerformanceGracePeriod = true;
+        next.performanceGraceWeeksLeft = 4;
+        log.push(...HR_MESSAGES.graceStarted);
+      }
     }
   }
 
-  // UNEMPLOYMENT (APPLICATION ACCUMULATION ONLY)
+  // UNEMPLOYMENT
   if (choice === "unemployment" && !next.jobId) {
     const remainingCapacity = Math.max(0, 14 - next.applicationsThisMonth);
     const applicationsThisWeek = Math.min(next.energy, remainingCapacity);
@@ -130,7 +164,7 @@ export function resolveWeeklyStep(
     );
   }
 
-  // WELFARE ENFORCEMENT (NON-ECONOMIC)
+  // WELFARE ENFORCEMENT
   if (next.onWelfare) {
     next.welfareWeeksThisMonth += 1;
     const phase = welfarePhase(next);
@@ -156,11 +190,32 @@ export function resolveWeeklyStep(
     }
   }
 
+  // CASE MANAGER 
+  const caseManagerLine = await managedBoredomAgent({
+    state: next,
+    economy,
+    lastAction: choice,
+    lastEvent,
+    userInput: caseManagerUserInput,
+    rng,
+    mode: caseManagerMode,
+  });
+
+
+  log.push(caseManagerLine);
+
   // TIME ADVANCE
   if (next.week < 4) {
     next.week += 1;
   } else {
-    next = applyMonthlySettlement(next, economy, jobs, rng);
+    // Month settlement belongs previous month
+    next = await applyMonthlySettlement(
+      next,
+      economy,
+      jobs,
+      rng,
+      { caseManagerMode }
+    );
     next.week = 1;
     next.month += 1;
   }
