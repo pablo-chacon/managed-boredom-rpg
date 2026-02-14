@@ -5,19 +5,20 @@ import { ECONOMY } from "../src/config/economy";
 import { JOBS } from "../src/config/jobs";
 import { ILLEGAL_WORK_CFG } from "../src/config/illegal";
 import { DOCTOR_CFG } from "../src/config/doctor";
-import { UNEMPLOYMENT_CFG } from "../src/config/unemployment";
 
 // Run deterministic sequence of choices
-function runSimulation(
+async function runSimulation(
   seed: number,
   choices: WeeklyChoice[],
   initial?: Partial<GameState>
-): GameState {
+): Promise<GameState> {
+
   const rng = new RNG(seed);
+
 
   let state: GameState = {
     month: 0,
-    week: 1, // REQUIRED
+    week: 1,
     energy: 55,
     cash: 0,
     onWelfare: false,
@@ -45,10 +46,11 @@ function runSimulation(
     ...initial,
   };
 
+
   for (const choice of choices) {
     if (state.exited) break;
 
-    state = resolveWeeklyStep(
+    state = await resolveWeeklyStep(
       rng,
       state,
       choice,
@@ -56,15 +58,17 @@ function runSimulation(
       JOBS,
       ILLEGAL_WORK_CFG,
       DOCTOR_CFG,
-      UNEMPLOYMENT_CFG
+      { caseManagerMode: "deterministic" }
     );
   }
 
   return state;
 }
 
+
 describe("Managed Boredom deterministic core", () => {
-  it("produces identical state for identical seed and choices", () => {
+
+  it("produces identical state for identical seed and choices", async () => {
     const seed = 1337;
     const choices: WeeklyChoice[] = [
       "work",
@@ -74,13 +78,13 @@ describe("Managed Boredom deterministic core", () => {
       "visit_doctor",
     ];
 
-    const a = runSimulation(seed, choices);
-    const b = runSimulation(seed, choices);
+    const a = await runSimulation(seed, choices);
+    const b = await runSimulation(seed, choices);
 
     expect(a).toEqual(b);
   });
 
-  it("never throws for valid choice sequences", () => {
+  it("never throws for valid choice sequences", async () => {
     const seed = 1;
     const choices: WeeklyChoice[] = [
       "work",
@@ -92,10 +96,11 @@ describe("Managed Boredom deterministic core", () => {
       "rest",
     ];
 
-    expect(() => runSimulation(seed, choices)).not.toThrow();
+    await expect(runSimulation(seed, choices)).resolves.toBeDefined();
   });
 
-  it("does not exit without formal exit conditions", () => {
+
+  it("does not exit without formal exit conditions", async () => {
     const seed = 42;
     const choices: WeeklyChoice[] = [
       "illegal_work",
@@ -104,22 +109,24 @@ describe("Managed Boredom deterministic core", () => {
       "illegal_work",
     ];
 
-    const end = runSimulation(seed, choices);
+    const end = await runSimulation(seed, choices);
 
     expect(end.exited).toBe(false);
   });
 
-  it("energy always remains within bounds", () => {
+
+  it("energy always remains within bounds", async () => {
     const seed = 999;
     const choices: WeeklyChoice[] = Array(24).fill("illegal_work");
 
-    const end = runSimulation(seed, choices);
+    const end = await runSimulation(seed, choices);
 
     expect(end.energy).toBeGreaterThanOrEqual(0);
     expect(end.energy).toBeLessThanOrEqual(100);
   });
 
-  it("cash never becomes NaN or infinite", () => {
+
+  it("cash never becomes NaN or infinite", async () => {
     const seed = 2024;
     const choices: WeeklyChoice[] = [
       "work",
@@ -130,12 +137,13 @@ describe("Managed Boredom deterministic core", () => {
       "work",
     ];
 
-    const end = runSimulation(seed, choices);
+    const end = await runSimulation(seed, choices);
 
     expect(Number.isFinite(end.cash)).toBe(true);
   });
 
-  it("distress log entries are structurally valid if present", () => {
+
+  it("distress log entries are structurally valid if present", async () => {
     const seed = 777;
     const choices: WeeklyChoice[] = [
       "illegal_work",
@@ -143,7 +151,7 @@ describe("Managed Boredom deterministic core", () => {
       "illegal_work",
     ];
 
-    const end = runSimulation(seed, choices);
+    const end = await runSimulation(seed, choices);
 
     for (const entry of end.distressLog) {
       expect(entry).toEqual(
