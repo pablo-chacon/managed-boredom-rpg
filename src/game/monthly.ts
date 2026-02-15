@@ -185,17 +185,39 @@ export async function applyMonthlySettlement(
     }
   }
 
-
+  // EXIT REQUIREMENTS
   const exitCost =
     economy.exit.passport.cost +
     economy.exit.travel.ticketCost +
     economy.exit.travel.flightTax;
 
-    
-  const exited = hasPassport && cash >= exitCost;
-  if (exited) log.push("Exit conditions satisfied.");
+  const reserveRequirement =
+    economy.living.monthlyCost * 5;
 
-  // Draft next state before narration
+  let exitReserveMonths = state.exitReserveMonths;
+
+  const reserveSatisfied =
+    hasPassport &&
+    hasTicket &&
+    cash >= exitCost + reserveRequirement;
+
+  if (reserveSatisfied) {
+    exitReserveMonths += 1;
+    log.push("Financial stability verification in progress.");
+  } else {
+    exitReserveMonths = 0;
+  }
+
+  const exited = exitReserveMonths >= 1;
+
+  if (exited) {
+    log.push(
+      "Exit conditions sustained.",
+      "Departure authorization granted."
+    );
+  }
+
+  // Draft next state
   const draftNext: GameState = {
     ...state,
     cash,
@@ -214,6 +236,7 @@ export async function applyMonthlySettlement(
     highEnergyWorkWeeksThisMonth: 0,
     weeksSinceLastPromotionReview,
     jobChance,
+    exitReserveMonths,
     log: state.log,
   };
 

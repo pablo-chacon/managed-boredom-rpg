@@ -107,6 +107,8 @@ async function main() {
     onPerformanceGracePeriod: false,
     performanceGraceWeeksLeft: 0,
     distressLog: [],
+    exitReserveMonths: 0,
+
     log: [],
   };
 

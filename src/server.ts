@@ -51,6 +51,8 @@ function createInitialState(): GameState {
     onPerformanceGracePeriod: false,
     performanceGraceWeeksLeft: 0,
     distressLog: [],
+    exitReserveMonths: 0,
+
     log: [
       "Due to reconstruction, your position has been terminated.",
       "Record high bonuses for board members...",
@@ -63,7 +65,21 @@ function createInitialState(): GameState {
   Server-owned state
 */
 let state: GameState = createInitialState();
-const rng = new RNG(1337); // deterministic seed for PoC
+const rng = new RNG(1337); // deterministic seed
+
+/*
+  Exit requirements
+*/
+app.get("/config", (_req, res) => {
+  res.json({
+    passportCost: ECONOMY.exit.passport.cost,
+    passportProcessingMonths: ECONOMY.exit.passport.processingMonths,
+    ticketCost: ECONOMY.exit.travel.ticketCost,
+    flightTax: ECONOMY.exit.travel.flightTax,
+    monthlyLivingCost: ECONOMY.living.monthlyCost
+  });
+});
+
 
 /*
   Reset Endpoint

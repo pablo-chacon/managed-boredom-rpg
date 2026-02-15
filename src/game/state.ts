@@ -41,7 +41,8 @@ export type GameState = {
   workWeeksThisMonth: number;
   highEnergyWorkWeeksThisMonth: number;
   weeksSinceLastPromotionReview: number;
-  onPerformanceGracePeriod: boolean
-  performanceGraceWeeksLeft: number
+  onPerformanceGracePeriod: boolean;
+  performanceGraceWeeksLeft: number;
+  exitReserveMonths: number;
 
 };
