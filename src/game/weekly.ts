@@ -89,11 +89,12 @@ export async function resolveWeeklyStep(
   }
 
   // WORK
-  if (choice === "work" && next.jobId && !next.onWelfare) {
-    const job = jobs.find(j => j.id === next.jobId);
-    if (!job) {
-      log.push("Work activity failed to resolve due to missing job configuration.");
+  if (choice === "work") {
+    if (!next.jobId || next.onWelfare) {
+      log.push("No active employment contract found.");
     } else {
+      const job = jobs.find(j => j.id === next.jobId)!;
+
       next.workWeeksThisMonth += 1;
       next.weeksSinceLastPromotionReview += 1;
 

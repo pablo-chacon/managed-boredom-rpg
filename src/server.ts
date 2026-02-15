@@ -18,15 +18,22 @@ app.use(express.static(path.join(__dirname, "../frontend")));
   Initial Game State Factory
 */
 function createInitialState(): GameState {
+  const initialJob = "clerk";
+  const job = JOBS.find(j => j.id === initialJob)!;
+
+  const gross = job.grossMonthly;
+  const tax = Math.round(gross * ECONOMY.income.taxRate);
+  const net = gross - tax;
+
   return {
     month: 0,
     week: 1,
     energy: 55,
-    cash: 0,
+    cash: net, // initial payout
     onWelfare: false,
     welfareWeeksThisMonth: 0,
     welfareCooldownMonths: 0,
-    jobId: "clerk",
+    jobId: "", // terminated immediately
     hasPassport: false,
     passportMonthsLeft: 0,
     hasTicket: false,
@@ -44,7 +51,11 @@ function createInitialState(): GameState {
     onPerformanceGracePeriod: false,
     performanceGraceWeeksLeft: 0,
     distressLog: [],
-    log: [],
+    log: [
+      "Due to reconstruction, your position has been terminated.",
+      "Record high bonuses for board members...",
+      `Final salary paid: $${net} after tax.`
+    ],
   };
 }
 

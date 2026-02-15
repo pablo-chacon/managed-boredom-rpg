@@ -4,9 +4,7 @@ import { Job } from "../config/jobs";
 import { NEWS_FLASHES } from "./content/news";
 import { managedBoredomAgent } from "./managedBoredomAgent";
 
-
 type CaseManagerMode = "live" | "deterministic";
-
 
 export async function applyMonthlySettlement(
   state: GameState,
@@ -23,12 +21,12 @@ export async function applyMonthlySettlement(
   const caseManagerMode: CaseManagerMode =
     opts?.caseManagerMode ?? "deterministic";
 
-  // Settlement belongs to current month.
   log.push(`--- Month ${state.month} settlement ---`);
 
   // NEWS
   const NEWS_BORDER = "-".repeat(23);
-  const newsFlash = NEWS_FLASHES[Math.floor(rng.nextFloat() * NEWS_FLASHES.length)];
+  const newsFlash =
+    NEWS_FLASHES[Math.floor(rng.nextFloat() * NEWS_FLASHES.length)];
   log.push(`${NEWS_BORDER}\n${newsFlash}\n${NEWS_BORDER}`);
 
 
@@ -38,6 +36,7 @@ export async function applyMonthlySettlement(
     onPerformanceGracePeriod,
     performanceGraceWeeksLeft,
     highEnergyWorkWeeksThisMonth,
+    workWeeksThisMonth,
     applicationsThisMonth,
     weeksSinceLastPromotionReview,
     jobChance,
@@ -51,7 +50,62 @@ export async function applyMonthlySettlement(
     jobId = "";
   }
 
-  // PERFORMANCE GRACE RESOLUTION (MONTHLY)
+  // SALARY
+  if (jobId && !onWelfare) {
+    const job = jobs.find(j => j.id === jobId);
+    if (job) {
+      const net =
+        job.grossMonthly -
+        Math.round(job.grossMonthly * economy.income.taxRate);
+
+      cash += net;
+      log.push(`Salary paid: +$${net} after tax.`);
+    } else {
+      log.push("Salary processing failed.");
+    }
+  }
+
+  // EXCELLENCE COST DRIFT
+  let stabilityMultiplier = 1.0;
+
+
+  if (!onWelfare && jobId) {
+    if (cash > 2500) stabilityMultiplier = 1.25;
+    else if (cash > 1800) stabilityMultiplier = 1.15;
+    else if (cash > 1200) stabilityMultiplier = 1.08;
+  }
+
+
+  const baseLiving = economy.living.monthlyCost;
+  const living = Math.round(baseLiving * stabilityMultiplier);
+  const vat = Math.round(living * economy.vat.rate);
+
+  cash -= living + vat;
+
+
+  if (stabilityMultiplier > 1.0) {
+    log.push(
+      "Adjusted cost of living applied.",
+      `Living costs updated: $${living} + VAT $${vat}.`
+    );
+  } else {
+    log.push(`Living costs deducted: $${living} + VAT $${vat}.`);
+  }
+
+  // EXCELLENCE LOOP PRESSURE
+  if (!onWelfare && jobId && stabilityMultiplier > 1.0) {
+    if (workWeeksThisMonth < 3) {
+      log.push(
+        "Performance expectations were not met.",
+        "Sustained output is required in this tier."
+      );
+
+      onPerformanceGracePeriod = true;
+      performanceGraceWeeksLeft = 4;
+    }
+  }
+
+  // PERFORMANCE GRACE RESOLUTION
   if (onPerformanceGracePeriod) {
     performanceGraceWeeksLeft -= 4;
 
@@ -77,50 +131,7 @@ export async function applyMonthlySettlement(
     }
   }
 
-  // SALARY
-  if (jobId && !onWelfare) {
-    const job = jobs.find(j => j.id === jobId);
-    if (!job) {
-      log.push("Salary could not be processed due to missing job configuration.");
-    } else {
-      const net =
-        job.grossMonthly -
-        Math.round(job.grossMonthly * economy.income.taxRate);
-
-      cash += net;
-      log.push(`Salary paid: +$${net} after tax.`);
-    }
-  }
-
-  // EXCELLENCE COST DRIFT
-  let stabilityMultiplier = 1.0;
-
-  
-  if (!onWelfare && jobId) {
-    if (cash > 2500) stabilityMultiplier = 1.25;
-    else if (cash > 1800) stabilityMultiplier = 1.15;
-    else if (cash > 1200) stabilityMultiplier = 1.08;
-  }
-
-
-  const baseLiving = economy.living.monthlyCost;
-  const living = Math.round(baseLiving * stabilityMultiplier);
-  const vat = Math.round(living * economy.vat.rate);
-
-
-  cash -= living + vat;
-
-
-  if (stabilityMultiplier > 1.0) {
-    log.push(
-      "Adjusted cost of living applied.",
-      `Living costs updated: $${living} + VAT $${vat}.`
-    );
-  } else {
-    log.push(`Living costs deducted: $${living} + VAT $${vat}.`);
-  }
-
-  // ENERGY CAP
+  // ENERGY CAP IN EXCELLENCE TIER
   if (!onWelfare && jobId && cash > 1800 && energy > 45) {
     energy = 45;
     log.push("Sustained workload limits recovery.");
@@ -149,6 +160,7 @@ export async function applyMonthlySettlement(
     }
   }
 
+
   // JOB MATCHING
   if (!jobId && !onWelfare && applicationsThisMonth > 0) {
     const chance = Math.min(1, jobChance);
@@ -163,8 +175,8 @@ export async function applyMonthlySettlement(
       );
     }
   }
-
-  // PASSPORT PROCESSING TICK
+  
+  //  PASSPORT PROCESSING
   if (passportMonthsLeft > 0) {
     passportMonthsLeft -= 1;
     if (passportMonthsLeft === 0) {
@@ -179,11 +191,11 @@ export async function applyMonthlySettlement(
     economy.exit.travel.ticketCost +
     economy.exit.travel.flightTax;
 
-
+    
   const exited = hasPassport && cash >= exitCost;
   if (exited) log.push("Exit conditions satisfied.");
 
-  // Build post-settlement state for Case Manager narration
+  // Draft next state before narration
   const draftNext: GameState = {
     ...state,
     cash,
