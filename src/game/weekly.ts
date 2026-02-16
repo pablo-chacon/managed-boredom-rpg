@@ -8,7 +8,6 @@ import { Job } from "../config/jobs";
 import { HR_MESSAGES } from "./content/hr";
 import { managedBoredomAgent } from "./managedBoredomAgent";
 
-
 export type WeeklyChoice =
   | "work"
   | "unemployment"
@@ -16,9 +15,7 @@ export type WeeklyChoice =
   | "visit_doctor"
   | "rest";
 
-
 type CaseManagerMode = "live" | "deterministic";
-
 
 interface LastEvent {
   id: string;
@@ -72,14 +69,11 @@ export async function resolveWeeklyStep(
   let next: GameState = { ...state };
   const log: string[] = [];
 
-
   const caseManagerMode: CaseManagerMode =
     opts?.caseManagerMode ?? "deterministic";
 
-
   const caseManagerUserInput = opts?.caseManagerUserInput ?? "";
   const lastEvent = opts?.lastEvent;
-
 
   log.push(`--- Week ${state.week} ---`);
 
@@ -88,7 +82,10 @@ export async function resolveWeeklyStep(
     next.jobId = "";
   }
 
-  // WORK
+  /*
+    WORK
+    Slightly reduced collapse pressure.
+  */
   if (choice === "work") {
     if (!next.jobId || next.onWelfare) {
       log.push("No active employment contract found.");
@@ -98,7 +95,7 @@ export async function resolveWeeklyStep(
       next.workWeeksThisMonth += 1;
       next.weeksSinceLastPromotionReview += 1;
 
-      const highEnergy = next.energy >= 5;
+      const highEnergy = next.energy >= 10;
       if (highEnergy) next.highEnergyWorkWeeksThisMonth += 1;
 
       next.energy = clamp(next.energy - job.energyCost, 0, 100);
@@ -112,10 +109,13 @@ export async function resolveWeeklyStep(
     }
   }
 
-  // UNEMPLOYMENT
+  /*
+    UNEMPLOYMENT
+    More sustainable than welfare.
+  */
   if (choice === "unemployment" && !next.jobId) {
     const remainingCapacity = Math.max(0, 14 - next.applicationsThisMonth);
-    const applicationsThisWeek = Math.min(next.energy, remainingCapacity);
+    const applicationsThisWeek = Math.min(Math.floor(next.energy / 2), remainingCapacity);
 
     if (applicationsThisWeek > 0) {
       next.applicationsThisMonth += applicationsThisWeek;
@@ -132,7 +132,9 @@ export async function resolveWeeklyStep(
     log.push("Unemployment activity recorded.");
   }
 
-  // ILLEGAL WORK
+  /*
+    ILLEGAL WORK
+  */
   if (choice === "illegal_work" && !next.onWelfare && !next.jobId) {
     const res = resolveIllegalWorkWeek(
       rng,
@@ -144,17 +146,22 @@ export async function resolveWeeklyStep(
     log.push("Irregular income activity processed.");
   }
 
-  // DOCTOR
+  /*
+    DOCTOR
+  */
   if (choice === "visit_doctor") {
     const res = resolveDoctorAppointment(next, doctorCfg);
     next = res.state;
     log.push("Healthcare follow-up processed.");
   }
 
-  // REST
+  /*
+    REST
+    Welfare slightly weaker rest.
+  */
   if (choice === "rest") {
     next.energy = clamp(
-      next.energy + (next.onWelfare ? 3 : 5),
+      next.energy + (next.onWelfare ? 2 : 4),
       0,
       100
     );
@@ -165,19 +172,22 @@ export async function resolveWeeklyStep(
     );
   }
 
-  // WELFARE ENFORCEMENT
+  /*
+    WELFARE ENFORCEMENT
+    Reduced drain to avoid total collapse.
+  */
   if (next.onWelfare) {
     next.welfareWeeksThisMonth += 1;
     const phase = welfarePhase(next);
 
     switch (phase) {
       case "meeting":
-        next.energy = clamp(next.energy - 8, 0, 100);
+        next.energy = clamp(next.energy - 6, 0, 100);
         log.push("Mandatory welfare review meeting attended.");
         break;
 
       case "applications":
-        next.energy = clamp(next.energy - 10, 0, 100);
+        next.energy = clamp(next.energy - 8, 0, 100);
         log.push("Job search activity monitored.");
         break;
 
@@ -191,7 +201,39 @@ export async function resolveWeeklyStep(
     }
   }
 
-  // CASE MANAGER 
+  /*
+    BASELINE SLEEP RECOVERY
+    Core energy stabilizer.
+  */
+  next.energy = clamp(
+    next.energy + (next.onWelfare ? 3 : next.jobId ? 1 : 2),
+    0,
+    100
+  );
+
+  /*
+    STRUCTURAL WEEKLY LOAD
+    Gentle erosion instead of collapse spiral.
+  */
+  let weeklyLoad = 0;
+
+  if (next.onWelfare) weeklyLoad += 1;
+  else if (next.jobId) weeklyLoad += 1;
+  else weeklyLoad += 1;
+
+  // Excellence tier pressure
+  if (next.jobId && !next.onWelfare) {
+    const highTierCash =
+      economy.living.monthlyCost * 6;
+
+    if (next.cash > highTierCash) weeklyLoad += 1;
+  }
+
+  next.energy = clamp(next.energy - weeklyLoad, 0, 100);
+
+  /*
+    CASE MANAGER
+  */
   const caseManagerLine = await managedBoredomAgent({
     state: next,
     economy,
@@ -202,14 +244,14 @@ export async function resolveWeeklyStep(
     mode: caseManagerMode,
   });
 
-
   log.push(caseManagerLine);
 
-  // TIME ADVANCE
+  /*
+    TIME ADVANCE
+  */
   if (next.week < 4) {
     next.week += 1;
   } else {
-    // Month settlement belongs previous month
     next = await applyMonthlySettlement(
       next,
       economy,

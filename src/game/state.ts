@@ -2,16 +2,34 @@ import { DistressEvent } from "./distress"
 
 
 export type Economy = {
-
   time: { daysPerMonth: number };
+
   income: { taxRate: number };
+
   vat: { rate: number };
-  living: { monthlyCost: number };
+
+  living: {
+    monthlyCost: number;
+    exitReserveMonths: number;   
+  };
+
+  inflation: {
+    monthlyRate: number;         
+  };
+
+  labor: {
+    unemploymentRate: number;    
+  };
+
   exit: {
     passport: { cost: number; processingMonths: number };
     travel: { ticketCost: number; flightTax: number };
   };
-  doctor: { antidepressantCost: number; durationMonths: number };
+
+  doctor: {
+    antidepressantCost: number;
+    durationMonths: number;
+  };
 };
 
 

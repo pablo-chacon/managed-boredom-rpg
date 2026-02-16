@@ -13,6 +13,7 @@
     "dev:web": "ts-node src/server.ts",
     "check": "tsc --noEmit",
     "test": "jest",
+    "simulate": "ts-node src/game/simulate.ts",
     "run": "npm run build && node dist/index.js"
   },
   "dependencies": {
