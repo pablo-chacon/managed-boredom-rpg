@@ -4,9 +4,7 @@ import { Job } from "../config/jobs";
 import { NEWS_FLASHES } from "./content/news";
 import { managedBoredomAgent } from "./managedBoredomAgent";
 
-
 type CaseManagerMode = "live" | "deterministic";
-
 
 export async function applyMonthlySettlement(
   state: GameState,
@@ -15,14 +13,13 @@ export async function applyMonthlySettlement(
   rng: RNG,
   opts?: { caseManagerMode?: CaseManagerMode }
 ): Promise<GameState> {
+
   const log: string[] = [];
   let cash = state.cash;
   let energy = state.energy;
 
-
   const caseManagerMode: CaseManagerMode =
     opts?.caseManagerMode ?? "deterministic";
-
 
   log.push(`--- Month ${state.month} settlement ---`);
 
@@ -31,7 +28,6 @@ export async function applyMonthlySettlement(
   const newsFlash =
     NEWS_FLASHES[Math.floor(rng.nextFloat() * NEWS_FLASHES.length)];
   log.push(`${NEWS_BORDER}\n${newsFlash}\n${NEWS_BORDER}`);
-
 
   let {
     jobId,
@@ -71,53 +67,11 @@ export async function applyMonthlySettlement(
   const inflationMultiplier =
     1 + economy.inflation.monthlyRate;
 
-
   const baseLiving =
     economy.living.monthlyCost * inflationMultiplier;
 
   // EXCELLENCE COST DRIFT
   let stabilityMultiplier = 1.0;
-
-  // MEDIOCRITY LOOP
-  // Reflects Swedish median income stability and slow mobility
-  const inMediocrity =
-    jobId &&
-    !onWelfare &&
-    stabilityMultiplier === 1.0;
-
-  if (inMediocrity) {
-
-    // Small upward drift in jobChance
-    jobChance = Math.min(0.25, jobChance + 0.01);
-
-    // Slow aspiration erosion
-    if (weeksSinceLastPromotionReview > 16) {
-      energy = Math.max(0, energy - 1);
-      log.push("Career progression remains gradual.");
-    }
-
-    // Limited promotion probability
-    const eligibleForPromotion =
-      highEnergyWorkWeeksThisMonth >= 3 &&
-      energy >= 60 &&
-      !onPerformanceGracePeriod;
-
-      if (eligibleForPromotion) {
-
-        const promotionProbability = 0.02; // 2% monthly
-
-        if (rng.nextFloat() < promotionProbability) {
-          log.push(
-            "A higher responsibility opportunity has been assigned.",
-            "Increased expectations will apply."
-          );
-
-          // Increase effective jobChance slightly
-          jobChance += 0.05;
-        }
-      }
-    }
-
 
   if (!onWelfare && jobId) {
     if (cash > 2500) stabilityMultiplier = 1.25;
@@ -125,13 +79,21 @@ export async function applyMonthlySettlement(
     else if (cash > 1200) stabilityMultiplier = 1.08;
   }
 
+  // EXPECTATION ESCALATION
+  let expectationDrift = 1.0;
 
-  const living = Math.round(baseLiving * stabilityMultiplier);
+  if (stabilityMultiplier >= 1.15) {
+    expectationDrift = 1.05;
+    log.push("Increased expectations recalibrated living standards.");
+  }
+
+  const living = Math.round(
+    baseLiving * stabilityMultiplier * expectationDrift
+  );
+
   const vat = Math.round(living * economy.vat.rate);
 
-
   cash -= living + vat;
-
 
   if (stabilityMultiplier > 1.0) {
     log.push(
@@ -142,16 +104,13 @@ export async function applyMonthlySettlement(
     log.push(`Living costs deducted: $${living} + VAT $${vat}.`);
   }
 
-
   // WELFARE DRAG
-  // Stable support with long-term erosion
   if (onWelfare) {
     energy = Math.max(0, energy - 2);
     log.push("Ongoing dependency impacts long-term motivation.");
   }
 
   // EXCELLENCE LOOP PRESSURE
-  // Must work at least 3 weeks to remain stable
   if (!onWelfare && jobId && stabilityMultiplier > 1.0) {
     if (workWeeksThisMonth < 3) {
       log.push(
@@ -190,14 +149,8 @@ export async function applyMonthlySettlement(
     }
   }
 
-  // ENERGY CAP IN HIGH TIER
-  if (!onWelfare && jobId && stabilityMultiplier > 1.0 && energy > 45) {
-    energy = 45;
-    log.push("Sustained workload limits recovery.");
-  }
-
   // WELFARE ENTRY
-  if (!onWelfare && cash < -450) {
+  if (!onWelfare && cash < -550) {
     onWelfare = true;
     jobId = "";
     jobChance = jobChance * 0.8;
@@ -209,7 +162,6 @@ export async function applyMonthlySettlement(
   }
 
   // UNEMPLOYMENT COMPLIANCE
-  // Welfare requires full compliance to avoid further suppression
   if (!jobId) {
     const complianceRatio = Math.min(1, applicationsThisMonth / 14);
 
@@ -221,48 +173,26 @@ export async function applyMonthlySettlement(
     }
 
     if (onWelfare) {
-      const welfareCompliancePenalty = 0.15 + 0.85 * complianceRatio;
-      jobChance = jobChance * welfareCompliancePenalty;
+      const welfarePenalty = 0.15 + 0.85 * complianceRatio;
+      jobChance *= welfarePenalty;
     } else {
-      jobChance = jobChance * complianceRatio;
+      jobChance *= complianceRatio;
     }
   }
 
   // JOB MATCHING
-  // Welfare reduces exit probability and worsens over time
-  if (!jobId && !onWelfare && applicationsThisMonth > 0) {
+  if (!jobId && applicationsThisMonth > 0) {
+
     const macroAdjustment =
       1 - economy.labor.unemploymentRate;
-
-    const chance = Math.min(1, jobChance * macroAdjustment);
-
-    if (rng.nextFloat() < chance) {
-      const job = jobs[Math.floor(rng.nextFloat() * jobs.length)];
-      jobId = job.id;
-
-      log.push(
-        "Employment opportunity matched.",
-        `You have been hired as ${job.label}.`
-      );
-    }
-  }
-
-  // JOB MATCHING (WELFARE PATH)
-  if (!jobId && onWelfare && applicationsThisMonth > 0) {
-    const macroAdjustment =
-      1 - economy.labor.unemploymentRate;
-
-    const welfarePenaltyBase = 0.6;
-
-    const monthsFactor = Math.min(0.5, state.unemployedMonths * 0.02);
 
     const welfarePenalty =
-      Math.max(0.10, welfarePenaltyBase - monthsFactor);
+      onWelfare
+        ? Math.max(0.10, 0.6 - Math.min(0.5, state.unemployedMonths * 0.02))
+        : 1;
 
-    const chance = Math.min(
-      1,
-      jobChance * macroAdjustment * welfarePenalty
-    );
+    const chance =
+      Math.min(1, jobChance * macroAdjustment * welfarePenalty);
 
     if (rng.nextFloat() < chance) {
       const job = jobs[Math.floor(rng.nextFloat() * jobs.length)];
@@ -271,10 +201,22 @@ export async function applyMonthlySettlement(
 
       log.push(
         "Employment opportunity matched.",
-        `You have been hired as ${job.label}.`,
-        "Welfare support has been closed."
+        `You have been hired as ${job.label}.`
       );
     }
+  }
+
+  // PASSPORT APPLICATION POSSIBILITY
+  if (
+    !hasPassport &&
+    passportMonthsLeft === 0 &&
+    !onWelfare &&
+    cash >= economy.exit.passport.cost &&
+    energy >= 25
+  ) {
+    cash -= economy.exit.passport.cost;
+    passportMonthsLeft = economy.exit.passport.processingMonths;
+    log.push("Passport application submitted.");
   }
 
   // PASSPORT PROCESSING
@@ -286,29 +228,62 @@ export async function applyMonthlySettlement(
     }
   }
 
-  // EXIT RESERVE REQUIREMENT (SCB grounded)
-  const exitCost =
-    economy.exit.passport.cost +
-    economy.exit.travel.ticketCost +
-    economy.exit.travel.flightTax;
+  // TICKET PURCHASE POSSIBILITY
+  if (
+    hasPassport &&
+    !hasTicket &&
+    !onWelfare &&
+    cash >=
+      economy.exit.travel.ticketCost +
+      economy.exit.travel.flightTax
+  ) {
+    cash -=
+      economy.exit.travel.ticketCost +
+      economy.exit.travel.flightTax;
 
+    hasTicket = true;
+    log.push("Travel ticket purchased.");
+  }
+
+  // EXIT RESERVE REQUIREMENT
   const reserveRequirement =
     economy.living.monthlyCost *
     economy.living.exitReserveMonths;
 
+  // VERIFICATION COST (only if verification already started)
+  if (exitReserveMonths > 0) {
+    const verificationCost =
+      Math.round(economy.living.monthlyCost * 0.1);
+
+    cash -= verificationCost;
+    log.push("Exit verification incurs administrative expenses.");
+  }
+
+  // Optional: stochastic bureaucratic failure during verification
+  const auditFailure =
+    exitReserveMonths > 0 && rng.nextFloat() < 0.10;
+
   const reserveSatisfied =
+    !auditFailure &&
     hasPassport &&
     hasTicket &&
-    cash >= exitCost + reserveRequirement;
+    energy >= 20 &&
+    cash >= reserveRequirement;
 
   if (reserveSatisfied) {
     exitReserveMonths += 1;
     log.push("Financial stability verification in progress.");
   } else {
+    // Consecutive-month requirement (makes threshold actually matter)
     exitReserveMonths = 0;
+
+    if (auditFailure) {
+      log.push("Verification could not be completed this month.");
+    }
   }
 
-  const exited = exitReserveMonths >= 1;
+  const exited = exitReserveMonths >= 5;
+
 
   if (exited) {
     log.push(
@@ -317,7 +292,6 @@ export async function applyMonthlySettlement(
     );
   }
 
-  // Build next state
   const draftNext: GameState = {
     ...state,
     cash,
@@ -340,7 +314,6 @@ export async function applyMonthlySettlement(
     log: state.log
   };
 
-  // CASE MANAGER
   const caseManagerLine = await managedBoredomAgent({
     state: draftNext,
     economy,
@@ -351,9 +324,7 @@ export async function applyMonthlySettlement(
     mode: caseManagerMode
   });
 
-
   log.push(caseManagerLine);
-
 
   return {
     ...draftNext,

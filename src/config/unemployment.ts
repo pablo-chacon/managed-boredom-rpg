@@ -4,6 +4,7 @@ export const UNEMPLOYMENT_CFG = {
   stipendTaxRate: 0.30,
   applicationsRequired: 14,
   applicationEnergyCost: 1,
+  lastMonthApplications: 0,
   applicationsThisMonth: 0,
   monthlyParticipationEnergyCost: 8,
   cvCourseEnergyCost: 20,

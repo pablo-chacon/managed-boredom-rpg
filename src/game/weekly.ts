@@ -8,6 +8,7 @@ import { Job } from "../config/jobs";
 import { HR_MESSAGES } from "./content/hr";
 import { managedBoredomAgent } from "./managedBoredomAgent";
 
+
 export type WeeklyChoice =
   | "work"
   | "unemployment"
@@ -17,11 +18,13 @@ export type WeeklyChoice =
 
 type CaseManagerMode = "live" | "deterministic";
 
+
 interface LastEvent {
   id: string;
   label: string;
   energyDelta: number;
   cost: number;
+  
 }
 
 /**
@@ -84,7 +87,6 @@ export async function resolveWeeklyStep(
 
   /*
     WORK
-    Slightly reduced collapse pressure.
   */
   if (choice === "work") {
     if (!next.jobId || next.onWelfare) {
@@ -111,22 +113,42 @@ export async function resolveWeeklyStep(
 
   /*
     UNEMPLOYMENT
-    More sustainable than welfare.
   */
   if (choice === "unemployment" && !next.jobId) {
-    const remainingCapacity = Math.max(0, 14 - next.applicationsThisMonth);
-    const applicationsThisWeek = Math.min(Math.floor(next.energy / 2), remainingCapacity);
+
+    const burnout =
+      next.lastMonthApplications > 25;
+
+    const costPerApplication =
+      burnout ? 1.25 : 1;
+
+    const maxApplicationsThisWeek =
+      Math.floor(next.energy / costPerApplication);
+
+    const applicationsThisWeek =
+      maxApplicationsThisWeek;
 
     if (applicationsThisWeek > 0) {
+
       next.applicationsThisMonth += applicationsThisWeek;
-      next.energy = clamp(next.energy - applicationsThisWeek, 0, 100);
+
+      const energyCost =
+        Math.floor(applicationsThisWeek * costPerApplication);
+
+      next.energy = clamp(
+        next.energy - energyCost,
+        0,
+        100
+      );
 
       log.push(
         `${applicationsThisWeek} job applications submitted this week.`,
-        `Total this month: ${next.applicationsThisMonth}/14.`
+        burnout
+          ? "Application fatigue increases effort."
+          : "Standard effort applied."
       );
     } else {
-      log.push("No remaining capacity for job applications this month.");
+      log.push("Insufficient energy for applications.");
     }
 
     log.push("Unemployment activity recorded.");
@@ -157,7 +179,6 @@ export async function resolveWeeklyStep(
 
   /*
     REST
-    Welfare slightly weaker rest.
   */
   if (choice === "rest") {
     next.energy = clamp(
@@ -174,7 +195,6 @@ export async function resolveWeeklyStep(
 
   /*
     WELFARE ENFORCEMENT
-    Reduced drain to avoid total collapse.
   */
   if (next.onWelfare) {
     next.welfareWeeksThisMonth += 1;
@@ -203,7 +223,6 @@ export async function resolveWeeklyStep(
 
   /*
     BASELINE SLEEP RECOVERY
-    Core energy stabilizer.
   */
   next.energy = clamp(
     next.energy + (next.onWelfare ? 3 : next.jobId ? 1 : 2),
