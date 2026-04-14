@@ -16,7 +16,7 @@ Authorization is handled externally through CUT.
 
 ## Concept: Managed Boredom
 
-Managed Boredom is a dystopia without spectacle.
+Managed Boredom is a dystopia without spectacle. 
 
 There are no flying cars.
 No neon skylines.
@@ -26,18 +26,22 @@ Life functions.
 Everything works.
 Nothing improves.
 
-The system ensures that participants have:
+
+The mathematics is calculated by real statistics official statistics from:
+
+[Statistiska Centralbyrån](https://www.scb.se/)
+
+The system architecture let participants have:
 
 * Enough energy to continue
 * Enough money to survive
-* Just enough options to feel free
-* Never enough momentum to exit easily
+* Existing options
+* Low availability of choice
 
-When the system fails, responsibility is abstracted.
+When the system fails, responsibility is abstracted. The system works.
+
 When the individual fails, responsibility is enforced.
-
-This is not presented as cruelty.
-It is presented as care.
+Enforcement is caring.
 
 ---
 
@@ -55,6 +59,19 @@ To exit, the player must:
 
 Most paths appear viable.
 Few paths are effective.
+
+---
+
+## How to play
+
+In terminal run:
+
+```
+npm run build
+npm start
+```
+
+In your browser surf to URL: http://localhost:3000
 
 ---
 
