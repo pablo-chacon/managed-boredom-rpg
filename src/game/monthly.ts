@@ -2,24 +2,18 @@ import { RNG } from "./rng";
 import { GameState, Economy } from "./state";
 import { Job } from "../config/jobs";
 import { NEWS_FLASHES } from "./content/news";
-import { managedBoredomAgent } from "./managedBoredomAgent";
-
-type CaseManagerMode = "live" | "deterministic";
+import { monthlyNarration } from "./narrator";
 
 export async function applyMonthlySettlement(
   state: GameState,
   economy: Economy,
   jobs: readonly Job[],
-  rng: RNG,
-  opts?: { caseManagerMode?: CaseManagerMode }
+  rng: RNG
 ): Promise<GameState> {
 
   const log: string[] = [];
   let cash = state.cash;
   let energy = state.energy;
-
-  const caseManagerMode: CaseManagerMode =
-    opts?.caseManagerMode ?? "deterministic";
 
   log.push(`--- Month ${state.month} settlement ---`);
 
@@ -314,17 +308,19 @@ export async function applyMonthlySettlement(
     log: state.log
   };
 
-  const caseManagerLine = await managedBoredomAgent({
-    state: draftNext,
-    economy,
-    lastAction: "monthly_settlement",
-    lastEvent: undefined,
-    userInput: "",
-    rng,
-    mode: caseManagerMode
+  const narratorLine = await monthlyNarration({
+    month: state.month,
+    monthLog: log,
+    energy,
+    cash,
+    employed: !!jobId,
+    onWelfare,
+    unemployedMonths: state.unemployedMonths,
+    exitReserveMonths,
+    exited,
   });
 
-  log.push(caseManagerLine);
+  log.push(narratorLine);
 
   return {
     ...draftNext,

@@ -6,7 +6,6 @@ import { resolveIllegalWorkWeek, IllegalWorkConfig } from "./illegal";
 import { resolveDoctorAppointment, DoctorConfig } from "./doctor";
 import { Job } from "../config/jobs";
 import { HR_MESSAGES } from "./content/hr";
-import { managedBoredomAgent } from "./managedBoredomAgent";
 
 
 export type WeeklyChoice =
@@ -16,16 +15,6 @@ export type WeeklyChoice =
   | "visit_doctor"
   | "rest";
 
-type CaseManagerMode = "live" | "deterministic";
-
-
-interface LastEvent {
-  id: string;
-  label: string;
-  energyDelta: number;
-  cost: number;
-  
-}
 
 /**
  * Welfare rules.
@@ -53,7 +42,6 @@ export function welfarePhase(
 
 /**
  * Weekly step resolver.
- * Case Manager is deterministic.
  */
 export async function resolveWeeklyStep(
   rng: RNG,
@@ -63,20 +51,9 @@ export async function resolveWeeklyStep(
   jobs: readonly Job[],
   illegalCfg: IllegalWorkConfig,
   doctorCfg: DoctorConfig,
-  opts?: {
-    caseManagerMode?: CaseManagerMode;
-    caseManagerUserInput?: string;
-    lastEvent?: LastEvent;
-  }
 ): Promise<GameState> {
   let next: GameState = { ...state };
   const log: string[] = [];
-
-  const caseManagerMode: CaseManagerMode =
-    opts?.caseManagerMode ?? "deterministic";
-
-  const caseManagerUserInput = opts?.caseManagerUserInput ?? "";
-  const lastEvent = opts?.lastEvent;
 
   log.push(`--- Week ${state.week} ---`);
 
@@ -251,19 +228,10 @@ export async function resolveWeeklyStep(
   next.energy = clamp(next.energy - weeklyLoad, 0, 100);
 
   /*
-    CASE MANAGER
+    APPEND WEEKLY LOG BEFORE TIME ADVANCE
+    Week 4's events must appear before the monthly settlement output.
   */
-  const caseManagerLine = await managedBoredomAgent({
-    state: next,
-    economy,
-    lastAction: choice,
-    lastEvent,
-    userInput: caseManagerUserInput,
-    rng,
-    mode: caseManagerMode,
-  });
-
-  log.push(caseManagerLine);
+  next.log = [...next.log, ...log];
 
   /*
     TIME ADVANCE
@@ -275,13 +243,11 @@ export async function resolveWeeklyStep(
       next,
       economy,
       jobs,
-      rng,
-      { caseManagerMode }
+      rng
     );
     next.week = 1;
     next.month += 1;
   }
 
-  next.log = [...next.log, ...log];
   return next;
 }
