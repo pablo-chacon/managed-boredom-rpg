@@ -251,6 +251,3 @@ Managed Boredom is not a metaphor.
 
 It is a system.
 
-You are encouraged to play until you understand it.
-
-Exiting is optional.

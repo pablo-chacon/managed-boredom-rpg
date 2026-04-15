@@ -8,6 +8,8 @@ import { JOBS } from "./config/jobs";
 import { ILLEGAL_WORK_CFG } from "./config/illegal";
 import { DOCTOR_CFG } from "./config/doctor";
 
+
+require('dotenv').config()
 const app = express();
 app.use(express.json());
 
