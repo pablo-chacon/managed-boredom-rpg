@@ -10,7 +10,9 @@ The experience is not about winning fast.
 It is about understanding the system you are inside.
 
 This repository contains **game logic only**.
-Authorization is handled externally through CUT.
+CUT Authorization example implementation:
+- src/adapters/evm.ts
+- src/adapters/mock.ts
 
 ---
 
