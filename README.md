@@ -11,6 +11,9 @@ It is about understanding the system you are inside.
 
 This repository contains **game logic only**.
 Authorization is handled externally through CUT.
+CUT protocol repository:
+
+https://github.com/pablo-chacon/cut-protocol
 
 ---
 
